@@ -1,10 +1,10 @@
-import React, { useState, useEffect,useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 // --- Icon Components ---
 const MicIcon = (props) => (<svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line></svg>);
+const TypeIcon = (props) => (<svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z"/><path d="M12 18v-7"/><path d="M9 11h6"/></svg>);
 const UsersIcon = (props) => (<svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>);
 const BarChartIcon = (props) => (<svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line></svg>);
-const CameraIcon = (props) => (<svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path><circle cx="12" cy="13" r="3"></circle></svg>);
 const MenuIcon = (props) => (<svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" x2="20" y1="12" y2="12" /><line x1="4" x2="20" y1="6" y2="6" /><line x1="4" x2="20" y1="18" y2="18" /></svg>);
 const XIcon = (props) => (<svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>);
 const LogOutIcon = (props) => (<svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>);
@@ -14,8 +14,10 @@ const GlobeIcon = (props) => (<svg {...props} xmlns="http://www.w3.org/2000/svg"
 const CheckCircleIcon = (props) => (<svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>);
 const AlertCircleIcon = (props) => (<svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>);
 const SparklesIcon = (props) => (<svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.9 5.8-5.8 1.9 5.8 1.9L12 18l1.9-5.8 5.8-1.9-5.8-1.9z"/></svg>);
+
+
 // --- Mock shadcn/ui & recharts Components ---
-const Button = ({ children, variant = 'default', size = 'default', className = '', ...props }) => { const baseClasses = "inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 dark:ring-offset-slate-950 dark:focus-visible:ring-slate-300"; const variants = { default: "bg-blue-600 text-slate-50 hover:bg-blue-600/90 dark:bg-blue-500 dark:text-slate-50 dark:hover:bg-blue-500/90", outline: "border border-slate-200 bg-white hover:bg-slate-100 hover:text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-800 dark:hover:text-slate-50", ghost: "hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-slate-50", }; const sizes = { default: "h-10 px-4 py-2", lg: "h-11 rounded-md px-8 text-base", sm: "h-9 rounded-md px-3" }; return <button className={`${baseClasses} ${variants[variant]} ${sizes[size]} ${className}`} {...props}>{children}</button>; };
+const Button = ({ children, variant = 'default', size = 'default', className = '', ...props }) => { const baseClasses = "inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 dark:ring-offset-slate-950 dark:focus-visible:ring-slate-300"; const variants = { default: "bg-blue-600 text-slate-50 hover:bg-blue-600/90 dark:bg-blue-500 dark:text-slate-50 dark:hover:bg-blue-500/90", outline: "border border-slate-200 bg-white hover:bg-slate-100 hover:text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-800 dark:hover:text-slate-50", ghost: "hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-slate-50", destructive: "bg-red-500 text-slate-50 hover:bg-red-500/90 dark:bg-red-900 dark:text-slate-50 dark:hover:bg-red-900/90", }; const sizes = { default: "h-10 px-4 py-2", lg: "h-11 rounded-md px-8 text-base", sm: "h-9 rounded-md px-3" }; return <button className={`${baseClasses} ${variants[variant]} ${sizes[size]} ${className}`} {...props}>{children}</button>; };
 const Card = ({ children, className = '' }) => <div className={`rounded-lg border border-slate-200 bg-white text-slate-950 shadow-sm dark:border-slate-800 dark:bg-slate-950 dark:text-slate-50 ${className}`}>{children}</div>;
 const CardHeader = ({ children, className = '' }) => <div className={`flex flex-col space-y-1.5 p-6 ${className}`}>{children}</div>;
 const CardTitle = ({ children, className = '' }) => <h3 className={`text-xl font-semibold leading-none tracking-tight ${className}`}>{children}</h3>;
@@ -23,16 +25,14 @@ const CardDescription = ({ children, className = '' }) => <p className={`text-sm
 const CardContent = ({ children, className = '' }) => <div className={`p-6 pt-0 ${className}`}>{children}</div>;
 const Input = ({ className = '', ...props }) => (<input className={`flex h-10 w-full rounded-md border border-slate-200 bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-800 dark:placeholder:text-slate-400 dark:focus-visible:ring-slate-500 ${className}`} {...props} />);
 const Label = ({ className = '', ...props }) => (<label className={`text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 ${className}`} {...props} />);
+const Textarea = ({ className = '', ...props }) => (<textarea className={`flex min-h-[80px] w-full rounded-md border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-slate-300 ring-offset-background placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${className}`} {...props} />);
 const Tabs = ({ children, defaultValue, onValueChange, className = '' }) => { const [activeTab, setActiveTab] = useState(defaultValue); const handleTabChange = (value) => { setActiveTab(value); if (onValueChange) onValueChange(value); }; return (<div className={className}>{React.Children.map(children, child => { if (!child) return null; if (child.type === TabsList) { return React.cloneElement(child, { activeTab, onTabChange: handleTabChange }); } if (child.type === TabsContent && child.props.value === activeTab) { return child; } return null; })}</div>); };
 const TabsList = ({ children, activeTab, onTabChange, className = '' }) => <div className={`inline-flex h-10 items-center justify-center rounded-md bg-slate-100 p-1 text-slate-500 dark:bg-slate-800 dark:text-slate-400 ${className}`}>{React.Children.map(children, child => React.cloneElement(child, { activeTab, onTabChange }))}</div>;
 const TabsTrigger = ({ children, value, activeTab, onTabChange, className = '' }) => <button onClick={() => onTabChange(value)} className={`inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${activeTab === value ? 'bg-white shadow-sm text-slate-950 dark:bg-slate-950 dark:text-slate-50' : ''} ${className}`}>{children}</button>;
 const TabsContent = ({ children, value, className = '' }) => <div className={`mt-4 ${className}`}>{children}</div>;
-
-// Mock Recharts components for visual representation
 const ResponsiveContainer = ({ children }) => <div style={{ width: '100%', height: '100%' }}>{children}</div>;
-const LineChart = ({ children, data }) => <div className="w-full h-full bg-slate-100 dark:bg-slate-800/50 rounded-lg p-4 flex items-end"><div className="w-full h-full border-l-2 border-b-2 border-slate-300 dark:border-slate-600 relative">{/* Simple mock lines */}<svg className="absolute inset-0" width="100%" height="100%" preserveAspectRatio="none"><polyline fill="none" stroke="#3b82f6" strokeWidth="2" points={data.map((d, i) => `${(i / (data.length - 1)) * 100},${100 - d.score}`).join(' ')} vectorEffect="non-scaling-stroke" /></svg></div></div>;
+const LineChart = ({ children, data }) => <div className="w-full h-full bg-slate-100 dark:bg-slate-800/50 rounded-lg p-4 flex items-end"><div className="w-full h-full border-l-2 border-b-2 border-slate-300 dark:border-slate-600 relative"><svg className="absolute inset-0" width="100%" height="100%" preserveAspectRatio="none"><polyline fill="none" stroke="#3b82f6" strokeWidth="2" points={data.map((d, i) => `${(i / (data.length - 1)) * 100},${100 - d.score}`).join(' ')} vectorEffect="non-scaling-stroke" /></svg></div></div>;
 const XAxis = () => null; const YAxis = () => null; const CartesianGrid = () => null; const Tooltip = () => null; const Legend = () => null; const Line = () => null;
-
 
 // --- Reusable Modal Component ---
 const Modal = ({ title, content, isOpen, onClose }) => {
@@ -316,8 +316,9 @@ function ServiceSelectionPage({ navigate, setSessionType }) {
 }
 
 // --- Gemini API Call Function ---
+// --- Gemini API Call Function ---
 const callGeminiAPI = async (prompt) => {
-    const apiKey = "AIzaSyAbhRIczQ-8_RdwWJqGtMRx61iBd3svxrQ"; // Left empty for security, will be provided by the environment.
+    const apiKey = import.meta.env.VITE_API;
 
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
     const payload = { contents: [{ parts: [{ text: prompt }] }] };
@@ -395,12 +396,15 @@ function FeedbackPage({ navigate, feedbackData }) {
 }
 
 
+
 function InterviewSessionPage({ navigate, sessionType, addSessionToHistory }) {
-    const [isListening, setIsListening] = useState(false);
+    const [inputType, setInputType] = useState('audio'); // 'audio' or 'text'
+    const [isRecording, setIsRecording] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [transcript, setTranscript] = useState('');
-    const recognitionRef = useRef(null);
-    const finalTranscriptRef = useRef(''); // Use ref to accumulate final transcript
+    const [answerText, setAnswerText] = useState(''); // Holds both transcript and typed text
+    const [audioBlob, setAudioBlob] = useState(null);
+    const mediaRecorderRef = useRef(null);
+    const audioChunksRef = useRef([]);
 
     const questions = {
         Technical: "Explain the difference between a process and a thread.",
@@ -410,14 +414,13 @@ function InterviewSessionPage({ navigate, sessionType, addSessionToHistory }) {
     const currentQuestion = questions[sessionType];
 
     const getGeminiFeedback = async (question, answer) => {
-        const prompt = `
-            You are an expert interview coach for a platform called VoiceCoach.
+        const prompt = `You are an expert interview coach for a platform called VoiceCoach.
             A user is practicing for a ${sessionType} interview.
             Analyze the user's answer to the provided question and generate a feedback report.
             Your response MUST be a valid JSON object. Do not include any markdown formatting like \`\`\`json.
 
             The question was: "${question}"
-            The user's answer (transcribed from voice) was: "${answer}"
+            The user's answer was: "${answer}"
 
             Provide your feedback in a JSON object with the following structure:
             {
@@ -431,77 +434,92 @@ function InterviewSessionPage({ navigate, sessionType, addSessionToHistory }) {
         `;
         try {
             const resultText = await callGeminiAPI(prompt);
-            return JSON.parse(resultText);
+            // FIX: Clean the string to remove markdown fences before parsing
+            const cleanedJsonText = resultText.replace(/```json/g, '').replace(/```/g, '').trim();
+            return JSON.parse(cleanedJsonText);
         } catch (error) {
             console.error("Error parsing Gemini response:", error);
             return { score: 0, clarity: 0, fillerWords: 0, pace: 0, strengths: ["Error generating feedback."], improvements: ["Could not parse the AI response. Please try again."] };
         }
     };
 
-    useEffect(() => {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRecognition) {
-            alert("Your browser does not support Speech Recognition. Please try Chrome or Edge.");
-            return;
-        }
+    const startRecording = async () => {
+        setAnswerText('');
+        setAudioBlob(null);
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+            mediaRecorderRef.current = mediaRecorder;
+            audioChunksRef.current = [];
 
-        const recognition = new SpeechRecognition();
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.lang = 'en-US';
-        recognitionRef.current = recognition;
+            mediaRecorder.ondataavailable = (event) => audioChunksRef.current.push(event.data);
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+                setAudioBlob(blob);
+            };
 
-        recognition.onresult = (event) => {
-            let interimTranscript = '';
-            for (let i = event.resultIndex; i < event.results.length; ++i) {
-                const transcriptPart = event.results[i][0].transcript;
-                if (event.results[i].isFinal) {
-                    finalTranscriptRef.current += transcriptPart + '. ';
-                } else {
-                    interimTranscript += transcriptPart;
-                }
-            }
-            setTranscript(finalTranscriptRef.current + interimTranscript);
-        };
-        
-        recognition.onend = () => {
-            setIsListening(false);
-        };
-        
-        recognition.onerror = (event) => {
-            console.error("Speech recognition error:", event.error);
-        };
-
-        return () => {
-            if (recognitionRef.current) {
-                recognitionRef.current.stop();
-            }
-        };
-    }, []);
-
-    const startListening = () => {
-        if (recognitionRef.current && !isListening) {
-            finalTranscriptRef.current = transcript; // Preserve existing text
-            recognitionRef.current.start();
-            setIsListening(true);
+            mediaRecorder.start();
+            setIsRecording(true);
+        } catch (err) {
+            console.error("Error starting recording:", err);
+            alert("Could not start recording. Please ensure microphone permissions are enabled.");
         }
     };
 
-    const stopListening = () => {
-        if (recognitionRef.current && isListening) {
-            recognitionRef.current.stop();
-            setIsListening(false);
+    const stopRecording = () => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+            mediaRecorderRef.current.stop();
+            setIsRecording(false);
         }
     };
 
     const handleFinish = async () => {
-        stopListening();
         setIsSubmitting(true);
-        const finalAnswer = transcript.trim();
-        const feedbackData = await getGeminiFeedback(currentQuestion, finalAnswer);
-        const newSession = { type: sessionType, date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }), ...feedbackData };
-        addSessionToHistory(newSession);
-        navigate({ page: 'feedback', data: newSession });
+        let finalAnswer = answerText;
+
+        try {
+            if (inputType === 'audio') {
+                if (!audioBlob) {
+                    alert("Please record your answer first by clicking Start and Stop Recording.");
+                    setIsSubmitting(false);
+                    return;
+                }
+                const formData = new FormData();
+                formData.append('audio', audioBlob, 'interview-answer.webm');
+                
+                const transcriptResponse = await fetch('https://chinese-camcorder-recently-terms.trycloudflare.com//transcribe', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                if (!transcriptResponse.ok) {
+                    const errorData = await transcriptResponse.json();
+                    throw new Error(errorData.error || `Transcription failed with status: ${transcriptResponse.status}`);
+                }
+                const transcriptData = await transcriptResponse.json();
+                finalAnswer = transcriptData.text;
+                setAnswerText(finalAnswer);
+            }
+
+            if (finalAnswer.trim() === '') {
+                alert("Please provide an answer before analyzing.");
+                setIsSubmitting(false);
+                return;
+            }
+                console.log("Final Answer:", finalAnswer);
+                
+            const feedbackData = await getGeminiFeedback(currentQuestion, finalAnswer);
+            console.log("Feedback Data:", feedbackData);
+
+            const newSession = { type: sessionType, date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }), ...feedbackData };
+            addSessionToHistory(newSession);
+            navigate({ page: 'feedback', data: newSession });
+
+        } catch (error) {
+            console.error("Error in the finish process:", error);
+            alert(`An error occurred: ${error.message}. Please check the console for details.`);
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -509,32 +527,59 @@ function InterviewSessionPage({ navigate, sessionType, addSessionToHistory }) {
             <div className="w-full max-w-3xl text-center">
                 <p className="text-blue-400 font-semibold mb-4">{sessionType} Interview Practice</p>
                 <Card className="bg-slate-800 border-slate-700 mb-8"><CardContent className="p-8"><h2 className="text-2xl md:text-3xl leading-snug">{currentQuestion}</h2></CardContent></Card>
-                <Card className="bg-slate-800/50 border-slate-700/50 min-h-[120px]"><CardContent className="p-6 text-left text-slate-300">{transcript || <span className="text-slate-500">Your transcribed answer will appear here...</span>}</CardContent></Card>
                 
-                <div className="mt-8 flex flex-col items-center gap-6">
-                    <div className="flex items-center gap-4">
-                        <Button size="lg" onClick={startListening} disabled={isListening || isSubmitting}>
-                            <MicIcon className="mr-2 h-5 w-5" /> Start Listening
+                <div className="mb-6">
+                    <div className="inline-flex rounded-md shadow-sm bg-slate-800 p-1">
+                        <Button variant={inputType === 'audio' ? 'default' : 'ghost'} onClick={() => setInputType('audio')} className="px-4 py-2 text-sm font-medium">
+                            <MicIcon className="mr-2 h-5 w-5"/> Audio Input
                         </Button>
-                        <Button size="lg" variant="destructive" onClick={stopListening} disabled={!isListening || isSubmitting}>
-                            <div className="w-5 h-5 mr-2 bg-white rounded-sm" /> Stop Listening
+                        <Button variant={inputType === 'text' ? 'default' : 'ghost'} onClick={() => setInputType('text')} className="px-4 py-2 text-sm font-medium">
+                            <TypeIcon className="mr-2 h-5 w-5"/> Text Input
                         </Button>
                     </div>
-                    <p className={`text-lg transition-opacity duration-300 ${isListening ? 'opacity-100' : 'opacity-50'}`}>
-                        {isListening ? '🔴 Listening...' : '⚫ Stopped'}
-                    </p>
                 </div>
 
+                {inputType === 'audio' ? (
+                    <div>
+                        <Card className="bg-slate-800/50 border-slate-700/50 min-h-[120px]">
+                            <CardContent className="p-6 text-left text-slate-300">
+                                {answerText ? (
+                                    <>
+                                        <p className="text-sm text-slate-400 mb-2">Your Transcribed Answer:</p>
+                                        <p>{answerText}</p>
+                                    </>
+                                ) : (
+                                    <span className="text-slate-500">{isSubmitting ? 'Transcription in progress...' : 'Your transcribed answer will appear here after you record.'}</span>
+                                )}
+                            </CardContent>
+                        </Card>
+                        <div className="mt-8 flex flex-col items-center gap-6">
+                            <div className="flex items-center gap-4">
+                                <Button size="lg" onClick={startRecording} disabled={isRecording || isSubmitting}><MicIcon className="mr-2 h-5 w-5" /> Start Recording</Button>
+                                <Button size="lg" variant="destructive" onClick={stopRecording} disabled={!isRecording || isSubmitting}><div className="w-5 h-5 mr-2 bg-white rounded-sm" /> Stop Recording</Button>
+                            </div>
+                            <p className={`text-lg transition-opacity duration-300 ${isRecording ? 'opacity-100' : 'opacity-50'}`}>{isRecording ? '🔴 Recording...' : '⚫ Stopped'}</p>
+                        </div>
+                    </div>
+                ) : (
+                    <Textarea 
+                        placeholder="Type your answer here..."
+                        value={answerText}
+                        onChange={(e) => setAnswerText(e.target.value)}
+                        rows={6}
+                        disabled={isSubmitting}
+                    />
+                )}
+
                 <div className="mt-8 border-t border-slate-700 pt-8">
-                    <Button size="lg" onClick={handleFinish} disabled={isSubmitting || transcript.length === 0}>
-                        {isSubmitting ? "Generating Feedback..." : "Analyze My Answer"}
+                    <Button size="lg" onClick={handleFinish} disabled={isSubmitting || (inputType === 'audio' && !audioBlob) || (inputType === 'text' && answerText.trim() === '')}>
+                        {isSubmitting ? "Analyzing..." : "Analyze My Answer"}
                     </Button>
                 </div>
             </div>
         </div>
     );
 }
-
 
 
 
