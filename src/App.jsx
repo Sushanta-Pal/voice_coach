@@ -485,9 +485,9 @@ function InterviewSessionPage({ navigate, sessionType, addSessionToHistory }) {
                     return;
                 }
                 const formData = new FormData();
-                formData.append('audio', audioBlob, 'interview-answer.webm');
+               formData.append('file', audioBlob, 'recording.wav');
                 
-                const transcriptResponse = await fetch('https://chinese-camcorder-recently-terms.trycloudflare.com//transcribe', {
+                const transcriptResponse = await fetch('https://72825d94a40b.ngrok-free.app/transcribe', {
                     method: 'POST',
                     body: formData,
                 });
