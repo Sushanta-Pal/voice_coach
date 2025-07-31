@@ -342,6 +342,7 @@ const callGeminiAPI = async (prompt) => {
         return `Error: ${error.message}`;
     }
 };
+
 function FeedbackPage({ navigate, feedbackData }) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [planContent, setPlanContent] = useState('');
@@ -374,6 +375,16 @@ function FeedbackPage({ navigate, feedbackData }) {
                     <h1 className="text-4xl font-bold text-slate-900 dark:text-white">Your Feedback Report</h1>
                     <p className="text-lg text-slate-600 dark:text-slate-400">Here's a breakdown of your performance.</p>
                 </div>
+
+                <Card className="mb-8">
+                    <CardHeader>
+                        <CardTitle>Your Answer</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-slate-700 dark:text-slate-300 italic">"{feedbackData.answer}"</p>
+                    </CardContent>
+                </Card>
+
                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                     <Card className="text-center"><CardHeader><CardTitle>Overall Score</CardTitle></CardHeader><CardContent><p className="text-5xl font-bold text-blue-600 dark:text-blue-500">{feedbackData.score}<span className="text-2xl text-slate-500">/100</span></p></CardContent></Card>
                     <Card className="text-center"><CardHeader><CardTitle>Clarity</CardTitle></CardHeader><CardContent><p className="text-5xl font-bold">{feedbackData.clarity}%</p></CardContent></Card>
@@ -394,7 +405,6 @@ function FeedbackPage({ navigate, feedbackData }) {
         </div>
     );
 }
-
 
 function InterviewSessionPage({ navigate, sessionType, addSessionToHistory }) {
     const [inputType, setInputType] = useState('audio'); // 'audio' or 'text'
@@ -519,12 +529,14 @@ function InterviewSessionPage({ navigate, sessionType, addSessionToHistory }) {
                     return;
                 }
                 const formData = new FormData();
-                formData.append('file', audioBlob, 'recording.wav');
-                
-                const transcriptResponse = await fetch('https://itachixobito-transcription-api.hf.space/transcribe', {
-                    method: 'POST',
-                    body: formData,
-                });
+               formData.append('file', audioBlob, 'recording.wav');
+
+            const transcriptResponse = await fetch('https://itachixobito-transcription-api.hf.space/transcribe', {
+         method: 'POST',
+        body: formData,
+         // DO NOT manually set the 'Content-Type' header.
+             // The browser sets it correctly for FormData.
+            });
 
                 if (!transcriptResponse.ok) {
                     const errorData = await transcriptResponse.json();
@@ -542,7 +554,12 @@ function InterviewSessionPage({ navigate, sessionType, addSessionToHistory }) {
             }
 
             const feedbackData = await getGeminiFeedback(currentQuestion, finalAnswer);
-            const newSession = { type: sessionType, date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }), ...feedbackData };
+            const newSession = { 
+                type: sessionType, 
+                date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }), 
+                answer: finalAnswer, // Pass the answer to the session history
+                ...feedbackData 
+            };
             addSessionToHistory(newSession);
             navigate({ page: 'feedback', data: newSession });
 
@@ -572,18 +589,6 @@ function InterviewSessionPage({ navigate, sessionType, addSessionToHistory }) {
 
                 {inputType === 'audio' ? (
                     <div>
-                        <Card className="bg-slate-800/50 border-slate-700/50 min-h-[120px]">
-                            <CardContent className="p-6 text-left text-slate-300">
-                                {answerText ? (
-                                    <>
-                                        <p className="text-sm text-slate-400 mb-2">Your Transcribed Answer:</p>
-                                        <p>{answerText}</p>
-                                    </>
-                                ) : (
-                                    <span className="text-slate-500">{isSubmitting ? 'Transcription in progress...' : 'Your transcribed answer will appear here after you record.'}</span>
-                                )}
-                            </CardContent>
-                        </Card>
                         <div className="mt-8 flex flex-col items-center gap-6">
                             <div className="flex items-center gap-4">
                                 <Button size="lg" onClick={startRecording} disabled={isRecording || isSubmitting}><MicIcon className="mr-2 h-5 w-5" /> Start Recording</Button>
