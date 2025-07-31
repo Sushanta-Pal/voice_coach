@@ -315,7 +315,7 @@ function ServiceSelectionPage({ navigate, setSessionType }) {
     return (<div className="min-h-screen w-full bg-slate-50 dark:bg-slate-900 p-4 sm:p-8"><div className="container mx-auto"><h1 className="text-3xl md:text-4xl font-bold mb-2 text-slate-900 dark:text-white">Start a New Session</h1><p className="text-lg text-slate-600 dark:text-slate-400 mb-12">Choose a service to start practicing.</p><div className="grid grid-cols-1 md:grid-cols-3 gap-8">{services.map(service => (<Card key={service.type} className="hover:shadow-xl hover:-translate-y-1 transition-all duration-300"><CardHeader className="flex-row items-center gap-4"><div className="p-3 bg-blue-100 dark:bg-blue-900/50 rounded-lg text-blue-600 dark:text-blue-400">{service.icon}</div><CardTitle className="text-2xl">{service.title}</CardTitle></CardHeader><CardContent><p className="text-slate-600 dark:text-slate-400 mb-6">{service.description}</p><Button className="w-full" onClick={() => handleSelectService(service.type)}>Start Session</Button></CardContent></Card>))}</div><div className="text-center mt-12"><Button variant="outline" onClick={() => navigate({ page: 'dashboard' })}>Back to Dashboard</Button></div></div></div>);
 }
 
-// --- Gemini API Call Function ---
+
 // --- Gemini API Call Function ---
 const callGeminiAPI = async (prompt) => {
     const apiKey = import.meta.env.VITE_API;
@@ -406,14 +406,16 @@ function FeedbackPage({ navigate, feedbackData }) {
     );
 }
 
+
+
 function InterviewSessionPage({ navigate, sessionType, addSessionToHistory }) {
     const [inputType, setInputType] = useState('audio'); // 'audio' or 'text'
     const [isRecording, setIsRecording] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [answerText, setAnswerText] = useState(''); // Holds both transcript and typed text
-    const [audioBlob, setAudioBlob] = useState(null);
-    const mediaRecorderRef = useRef(null);
-    const audioChunksRef = useRef([]);
+    
+    // Ref for the SpeechRecognition instance
+    const recognitionRef = useRef(null);
 
     const [currentQuestion, setCurrentQuestion] = useState('');
 
@@ -422,131 +424,118 @@ function InterviewSessionPage({ navigate, sessionType, addSessionToHistory }) {
             "Explain the difference between a process and a thread.",
             "What is a REST API? How is it different from SOAP?",
             "Describe the concept of Object-Oriented Programming.",
-            "What is the purpose of a primary key in a database?",
-            "Explain the difference between SQL and NoSQL databases."
         ],
         HR: [
-            "Tell me about a time you had a conflict with a coworker and how you resolved it.",
+            "Tell me about a time you had a conflict with a coworker.",
             "What are your biggest strengths and weaknesses?",
             "Where do you see yourself in five years?",
-            "Why do you want to work for this company?",
-            "Describe a challenging situation you faced at work and how you handled it."
         ],
         English: [
             "What are your favorite hobbies and why do you enjoy them?",
-            "If you could travel anywhere in the world, where would you go and why?",
+            "If you could travel anywhere, where would you go and why?",
             "Describe your ideal work environment.",
-            "What is a skill you would like to learn and why?",
-            "Tell me about a book you've read or a movie you've seen recently."
         ],
     };
 
     useEffect(() => {
-        // Select a random question when the component mounts or sessionType changes
         const questions = questionBank[sessionType];
         const randomIndex = Math.floor(Math.random() * questions.length);
         setCurrentQuestion(questions[randomIndex]);
     }, [sessionType]);
 
-
+    // This function remains largely the same
     const getGeminiFeedback = async (question, answer) => {
         const prompt = `
             You are an expert interview coach for a platform called VoiceCoach.
             A user is practicing for a ${sessionType} interview.
             Analyze the user's answer to the provided question and generate a feedback report.
             Your response MUST be a valid JSON object. Do not include any markdown formatting like \`\`\`json.
-
+            
             The question was: "${question}"
             The user's answer was: "${answer}"
 
-            Provide your feedback in a JSON object with the following structure:
+            Provide your feedback in a JSON object with the structure:
             {
-              "score": <an integer score out of 100 based on the quality of the answer>,
-              "clarity": <an integer percentage representing speech clarity>,
-              "fillerWords": <an integer count of filler words like 'um', 'uh', 'like'>,
-              "pace": <an estimated words per minute, e.g., 150>,
-              "strengths": [<a string array of 2-3 positive points about the answer>],
-              "improvements": [<a string array of 2-3 constructive feedback points>]
+              "score": <integer out of 100>,
+              "clarity": <integer percentage>,
+              "fillerWords": <integer count>,
+              "pace": <estimated words per minute>,
+              "strengths": [<string array of 2-3 points>],
+              "improvements": [<string array of 2-3 points>]
             }
         `;
         try {
             const resultText = await callGeminiAPI(prompt);
-            // FIX: Clean the string to remove markdown fences before parsing
             const cleanedJsonText = resultText.replace(/```json/g, '').replace(/```/g, '').trim();
             return JSON.parse(cleanedJsonText);
         } catch (error) {
             console.error("Error parsing Gemini response:", error);
-            return { score: 0, clarity: 0, fillerWords: 0, pace: 0, strengths: ["Error generating feedback."], improvements: ["Could not parse the AI response. Please try again."] };
+            return { score: 0, clarity: 0, fillerWords: 0, pace: 0, strengths: ["Error generating feedback."], improvements: ["Could not parse the AI response."] };
         }
     };
 
-    const startRecording = async () => {
-        setAnswerText('');
-        setAudioBlob(null);
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-            mediaRecorderRef.current = mediaRecorder;
-            audioChunksRef.current = [];
-
-            mediaRecorder.ondataavailable = (event) => audioChunksRef.current.push(event.data);
-            mediaRecorder.onstop = () => {
-                const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-                setAudioBlob(blob);
-            };
-
-            mediaRecorder.start();
-            setIsRecording(true);
-        } catch (err) {
-            console.error("Error starting recording:", err);
-            alert("Could not start recording. Please ensure microphone permissions are enabled.");
+    const startRecording = () => {
+        // Check for browser support
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            alert("Sorry, your browser does not support speech recognition.");
+            return;
         }
+
+        const recognition = new SpeechRecognition();
+        recognitionRef.current = recognition;
+        
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'en-US';
+
+        setAnswerText('');
+        setIsRecording(true);
+
+        recognition.onresult = (event) => {
+            const transcript = Array.from(event.results)
+                .map(result => result[0])
+                .map(result => result.transcript)
+                .join('');
+            setAnswerText(transcript);
+        };
+        
+        recognition.onerror = (event) => {
+            console.error("Speech recognition error:", event.error);
+            setIsRecording(false);
+        };
+        
+        recognition.onend = () => {
+            setIsRecording(false);
+        };
+
+        recognition.start();
     };
 
     const stopRecording = () => {
-        if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
-            mediaRecorderRef.current.stop();
-            setIsRecording(false);
+        if (recognitionRef.current) {
+            recognitionRef.current.stop();
+            setIsRecording(false); // Ensure state is updated immediately
         }
     };
     
     const handleInputTypeChange = (newType) => {
-        // Clear previous input when switching modes
+        if (isRecording) {
+            stopRecording();
+        }
         setAnswerText('');
-        setAudioBlob(null);
         setInputType(newType);
     };
 
     const handleFinish = async () => {
+        if (isRecording) {
+            stopRecording();
+        }
+        
         setIsSubmitting(true);
-        let finalAnswer = answerText;
+        const finalAnswer = answerText;
 
         try {
-            if (inputType === 'audio') {
-                if (!audioBlob) {
-                    alert("Please record your answer first by clicking Start and Stop Recording.");
-                    setIsSubmitting(false);
-                    return;
-                }
-                const formData = new FormData();
-               formData.append('file', audioBlob, 'recording.wav');
-
-            const transcriptResponse = await fetch('https://itachixobito-transcription-api.hf.space/transcribe', {
-         method: 'POST',
-        body: formData,
-         // DO NOT manually set the 'Content-Type' header.
-             // The browser sets it correctly for FormData.
-            });
-
-                if (!transcriptResponse.ok) {
-                    const errorData = await transcriptResponse.json();
-                    throw new Error(errorData.error || `Transcription failed with status: ${transcriptResponse.status}`);
-                }
-                const transcriptData = await transcriptResponse.json();
-                finalAnswer = transcriptData.text;
-                setAnswerText(finalAnswer); // Display the final transcript
-            }
-
             if (finalAnswer.trim() === '') {
                 alert("Please provide an answer before analyzing.");
                 setIsSubmitting(false);
@@ -557,7 +546,8 @@ function InterviewSessionPage({ navigate, sessionType, addSessionToHistory }) {
             const newSession = { 
                 type: sessionType, 
                 date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }), 
-                answer: finalAnswer, // Pass the answer to the session history
+                question: currentQuestion, // It's good practice to save the question
+                answer: finalAnswer,
                 ...feedbackData 
             };
             addSessionToHistory(newSession);
@@ -565,7 +555,8 @@ function InterviewSessionPage({ navigate, sessionType, addSessionToHistory }) {
 
         } catch (error) {
             console.error("Error in the finish process:", error);
-            alert(`An error occurred: ${error.message}. Please check the console for details.`);
+            alert(`An error occurred: ${error.message}.`);
+        } finally {
             setIsSubmitting(false);
         }
     };
@@ -588,13 +579,17 @@ function InterviewSessionPage({ navigate, sessionType, addSessionToHistory }) {
                 </div>
 
                 {inputType === 'audio' ? (
-                    <div>
-                        <div className="mt-8 flex flex-col items-center gap-6">
+                    <div className="w-full">
+                        <div className="flex flex-col items-center gap-6">
                             <div className="flex items-center gap-4">
                                 <Button size="lg" onClick={startRecording} disabled={isRecording || isSubmitting}><MicIcon className="mr-2 h-5 w-5" /> Start Recording</Button>
                                 <Button size="lg" variant="destructive" onClick={stopRecording} disabled={!isRecording || isSubmitting}><div className="w-5 h-5 mr-2 bg-white rounded-sm" /> Stop Recording</Button>
                             </div>
-                            <p className={`text-lg transition-opacity duration-300 ${isRecording ? 'opacity-100' : 'opacity-50'}`}>{isRecording ? '🔴 Recording...' : '⚫ Stopped'}</p>
+                            <p className={`text-lg transition-opacity duration-300 ${isRecording ? 'opacity-100' : 'opacity-50'}`}>{isRecording ? '🔴 Recording...' : '⚫ Press Start to Record'}</p>
+                        </div>
+                        {/* Area to display the live transcript */}
+                        <div className="mt-6 p-4 bg-slate-800 border border-slate-700 rounded-md min-h-[120px] text-left w-full">
+                           <p className="text-slate-200">{answerText || "Your transcribed answer will appear here..."}</p>
                         </div>
                     </div>
                 ) : (
@@ -604,11 +599,12 @@ function InterviewSessionPage({ navigate, sessionType, addSessionToHistory }) {
                         onChange={(e) => setAnswerText(e.target.value)}
                         rows={6}
                         disabled={isSubmitting}
+                        className="bg-slate-800 border-slate-700"
                     />
                 )}
 
                 <div className="mt-8 border-t border-slate-700 pt-8">
-                    <Button size="lg" onClick={handleFinish} disabled={isSubmitting || (inputType === 'audio' && !audioBlob) || (inputType === 'text' && answerText.trim() === '')}>
+                    <Button size="lg" onClick={handleFinish} disabled={isSubmitting || isRecording || answerText.trim() === ''}>
                         {isSubmitting ? "Analyzing..." : "Analyze My Answer"}
                     </Button>
                 </div>
