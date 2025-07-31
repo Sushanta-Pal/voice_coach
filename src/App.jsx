@@ -396,7 +396,6 @@ function FeedbackPage({ navigate, feedbackData }) {
 }
 
 
-
 function InterviewSessionPage({ navigate, sessionType, addSessionToHistory }) {
     const [inputType, setInputType] = useState('audio'); // 'audio' or 'text'
     const [isRecording, setIsRecording] = useState(false);
@@ -406,15 +405,43 @@ function InterviewSessionPage({ navigate, sessionType, addSessionToHistory }) {
     const mediaRecorderRef = useRef(null);
     const audioChunksRef = useRef([]);
 
-    const questions = {
-        Technical: "Explain the difference between a process and a thread.",
-        HR: "Tell me about a time you had a conflict with a coworker.",
-        English: "What are your favorite hobbies and why do you enjoy them?",
+    const [currentQuestion, setCurrentQuestion] = useState('');
+
+    const questionBank = {
+        Technical: [
+            "Explain the difference between a process and a thread.",
+            "What is a REST API? How is it different from SOAP?",
+            "Describe the concept of Object-Oriented Programming.",
+            "What is the purpose of a primary key in a database?",
+            "Explain the difference between SQL and NoSQL databases."
+        ],
+        HR: [
+            "Tell me about a time you had a conflict with a coworker and how you resolved it.",
+            "What are your biggest strengths and weaknesses?",
+            "Where do you see yourself in five years?",
+            "Why do you want to work for this company?",
+            "Describe a challenging situation you faced at work and how you handled it."
+        ],
+        English: [
+            "What are your favorite hobbies and why do you enjoy them?",
+            "If you could travel anywhere in the world, where would you go and why?",
+            "Describe your ideal work environment.",
+            "What is a skill you would like to learn and why?",
+            "Tell me about a book you've read or a movie you've seen recently."
+        ],
     };
-    const currentQuestion = questions[sessionType];
+
+    useEffect(() => {
+        // Select a random question when the component mounts or sessionType changes
+        const questions = questionBank[sessionType];
+        const randomIndex = Math.floor(Math.random() * questions.length);
+        setCurrentQuestion(questions[randomIndex]);
+    }, [sessionType]);
+
 
     const getGeminiFeedback = async (question, answer) => {
-        const prompt = `You are an expert interview coach for a platform called VoiceCoach.
+        const prompt = `
+            You are an expert interview coach for a platform called VoiceCoach.
             A user is practicing for a ${sessionType} interview.
             Analyze the user's answer to the provided question and generate a feedback report.
             Your response MUST be a valid JSON object. Do not include any markdown formatting like \`\`\`json.
@@ -472,6 +499,13 @@ function InterviewSessionPage({ navigate, sessionType, addSessionToHistory }) {
             setIsRecording(false);
         }
     };
+    
+    const handleInputTypeChange = (newType) => {
+        // Clear previous input when switching modes
+        setAnswerText('');
+        setAudioBlob(null);
+        setInputType(newType);
+    };
 
     const handleFinish = async () => {
         setIsSubmitting(true);
@@ -485,9 +519,9 @@ function InterviewSessionPage({ navigate, sessionType, addSessionToHistory }) {
                     return;
                 }
                 const formData = new FormData();
-               formData.append('file', audioBlob, 'recording.wav');
+                formData.append('audio', audioBlob, 'interview-answer.webm');
                 
-                const transcriptResponse = await fetch('https://itachixobito-transcription-api.hf.space/transcribe', {
+                const transcriptResponse = await fetch('https://ti-harvey-corporation-yarn.trycloudflare.com/api/transcribe', {
                     method: 'POST',
                     body: formData,
                 });
@@ -498,7 +532,7 @@ function InterviewSessionPage({ navigate, sessionType, addSessionToHistory }) {
                 }
                 const transcriptData = await transcriptResponse.json();
                 finalAnswer = transcriptData.text;
-                setAnswerText(finalAnswer);
+                setAnswerText(finalAnswer); // Display the final transcript
             }
 
             if (finalAnswer.trim() === '') {
@@ -506,11 +540,8 @@ function InterviewSessionPage({ navigate, sessionType, addSessionToHistory }) {
                 setIsSubmitting(false);
                 return;
             }
-                console.log("Final Answer:", finalAnswer);
-                
-            const feedbackData = await getGeminiFeedback(currentQuestion, finalAnswer);
-            console.log("Feedback Data:", feedbackData);
 
+            const feedbackData = await getGeminiFeedback(currentQuestion, finalAnswer);
             const newSession = { type: sessionType, date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }), ...feedbackData };
             addSessionToHistory(newSession);
             navigate({ page: 'feedback', data: newSession });
@@ -530,10 +561,10 @@ function InterviewSessionPage({ navigate, sessionType, addSessionToHistory }) {
                 
                 <div className="mb-6">
                     <div className="inline-flex rounded-md shadow-sm bg-slate-800 p-1">
-                        <Button variant={inputType === 'audio' ? 'default' : 'ghost'} onClick={() => setInputType('audio')} className="px-4 py-2 text-sm font-medium">
+                        <Button variant={inputType === 'audio' ? 'default' : 'ghost'} onClick={() => handleInputTypeChange('audio')} className="px-4 py-2 text-sm font-medium">
                             <MicIcon className="mr-2 h-5 w-5"/> Audio Input
                         </Button>
-                        <Button variant={inputType === 'text' ? 'default' : 'ghost'} onClick={() => setInputType('text')} className="px-4 py-2 text-sm font-medium">
+                        <Button variant={inputType === 'text' ? 'default' : 'ghost'} onClick={() => handleInputTypeChange('text')} className="px-4 py-2 text-sm font-medium">
                             <TypeIcon className="mr-2 h-5 w-5"/> Text Input
                         </Button>
                     </div>
@@ -580,7 +611,6 @@ function InterviewSessionPage({ navigate, sessionType, addSessionToHistory }) {
         </div>
     );
 }
-
 
 
 // --- Main App Component ---
