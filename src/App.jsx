@@ -487,7 +487,7 @@ function InterviewSessionPage({ navigate, sessionType, addSessionToHistory }) {
                 const formData = new FormData();
                formData.append('file', audioBlob, 'recording.wav');
                 
-                const transcriptResponse = await fetch('https://72825d94a40b.ngrok-free.app/transcribe', {
+                const transcriptResponse = await fetch('https://d06b4ea3ff53.ngrok-free.app/transcribe', {
                     method: 'POST',
                     body: formData,
                 });
