@@ -521,7 +521,7 @@ function InterviewSessionPage({ navigate, sessionType, addSessionToHistory }) {
                 const formData = new FormData();
                 formData.append('audio', audioBlob, 'interview-answer.webm');
                 
-                const transcriptResponse = await fetch('https://ti-harvey-corporation-yarn.trycloudflare.com/api/transcribe', {
+                const transcriptResponse = await fetch('https://itachixobito-transcription-api.hf.space/transcribe', {
                     method: 'POST',
                     body: formData,
                 });
