@@ -519,7 +519,7 @@ function InterviewSessionPage({ navigate, sessionType, addSessionToHistory }) {
                     return;
                 }
                 const formData = new FormData();
-                formData.append('audio', audioBlob, 'interview-answer.webm');
+                formData.append('file', audioBlob, 'recording.wav');
                 
                 const transcriptResponse = await fetch('https://itachixobito-transcription-api.hf.space/transcribe', {
                     method: 'POST',
