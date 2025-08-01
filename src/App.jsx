@@ -519,36 +519,47 @@ function InterviewSessionPage({ navigate, sessionType, addSessionToHistory }) {
     };
 
     const handleFinish = async () => {
-        setIsSubmitting(true);
-        let finalAnswer = answerText;
+    setIsSubmitting(true);
+    let finalAnswer = answerText;
 
-        try {
-            if (inputType === 'audio') {
-                if (!audioBlob) {
-                    alert("Please record your answer first by clicking Start and Stop Recording.");
-                    setIsSubmitting(false);
-                    return;
-                }
-                const formData = new FormData();
-               formData.append('file', audioBlob, 'recording.wav');
-
-            const transcriptResponse = await fetch('https://itachixobito-transcription-api.hf.space/transcribe', {
-         method: 'POST',
-        body: formData,
-         // DO NOT manually set the 'Content-Type' header.
-             // The browser sets it correctly for FormData.
-            });
-
-                if (!transcriptResponse.ok) {
-                    const errorData = await transcriptResponse.json();
-                    throw new Error(errorData.error || `Transcription failed with status: ${transcriptResponse.status}`);
-                }
-                const transcriptData = await transcriptResponse.json();
-                finalAnswer = transcriptData.text;
-                setAnswerText(finalAnswer); // Display the final transcript
+    try {
+        if (inputType === 'audio') {
+            if (!audioBlob) {
+                alert("Please record your answer first.");
+                setIsSubmitting(false);
+                return;
             }
 
-            if (finalAnswer.trim() === '') {
+            // --- START: FINAL API CALL CODE ---
+            
+            // 1. Use your permanent Hugging Face Space URL
+            const API_URL = 'https://itachixobito-deepgram-transcription-api.hf.space/transcribe';
+
+            // 2. Create FormData and append the audio blob as a file
+            const formData = new FormData();
+            formData.append('file', audioBlob, 'recording.webm');
+
+            // 3. Send the request
+            const transcriptResponse = await fetch(API_URL, {
+                method: 'POST',
+                body: formData,
+                // DO NOT set the 'Content-Type' header. The browser does it for you.
+            });
+            
+            // --- END: FINAL API CALL CODE ---
+
+            if (!transcriptResponse.ok) {
+                const errorData = await transcriptResponse.json();
+                throw new Error(errorData.detail || `Transcription failed`);
+            }
+            
+            const transcriptData = await transcriptResponse.json();
+            finalAnswer = transcriptData.text; // The API returns { "text": "..." }
+            setAnswerText(finalAnswer);
+        }
+
+        // ... the rest of your getGeminiFeedback logic remains the same ...
+        if (finalAnswer.trim() === '') {
                 alert("Please provide an answer before analyzing.");
                 setIsSubmitting(false);
                 return;
@@ -564,12 +575,13 @@ function InterviewSessionPage({ navigate, sessionType, addSessionToHistory }) {
             addSessionToHistory(newSession);
             navigate({ page: 'feedback', data: newSession });
 
-        } catch (error) {
-            console.error("Error in the finish process:", error);
-            alert(`An error occurred: ${error.message}. Please check the console for details.`);
-            setIsSubmitting(false);
-        }
-    };
+
+    } catch (error) {
+        console.error("Error in the finish process:", error);
+        alert(`An error occurred: ${error.message}.`);
+        setIsSubmitting(false);
+    }
+};
 
     return (
         <div className="min-h-screen w-full bg-slate-900 text-white flex flex-col items-center justify-center p-4">
