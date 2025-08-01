@@ -558,12 +558,7 @@ function InterviewSessionPage({ navigate, sessionType, addSessionToHistory }) {
             setAnswerText(finalAnswer);
         }
 
-        // ... the rest of your getGeminiFeedback logic remains the same ...
-        if (finalAnswer.trim() === '') {
-                alert("Please provide an answer before analyzing.");
-                setIsSubmitting(false);
-                return;
-            }
+        
 
             const feedbackData = await getGeminiFeedback(currentQuestion, finalAnswer);
             const newSession = { 
