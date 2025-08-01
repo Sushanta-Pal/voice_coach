@@ -532,7 +532,7 @@ function InterviewSessionPage({ navigate, sessionType, addSessionToHistory }) {
                 const formData = new FormData();
                formData.append('file', audioBlob, 'recording.wav');
 
-            const transcriptResponse = await fetch('https://715a07af1c82.ngrok-free.app/transcribe', {
+            const transcriptResponse = await fetch('https://itachixobito-transcription-api.hf.space/transcribe', {
          method: 'POST',
         body: formData,
          // DO NOT manually set the 'Content-Type' header.
