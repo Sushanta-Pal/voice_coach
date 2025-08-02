@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-// MODIFIED: useCompareTranscript is no longer needed here.
 import { useAnalyzeCommunication } from '../hooks/useVoiceCoach';
+// NEW: Import the useSessions hook to save the final report
+import { useSessions } from '../hooks/useSessions';
 
 // Import Components & Icons
 import Button from '../components/common/Button';
@@ -29,13 +30,19 @@ const storyData = {
 };
 
 
-// --- Main Page Component (No changes) ---
+// --- Main Page Component (MODIFIED) ---
 function CommunicationPracticePage() {
     const [stage, setStage] = useState('reading');
     const [results, setResults] = useState({ reading: [], repetition: [], comprehension: [] });
     const [finalAnalysis, setFinalAnalysis] = useState(null);
+    
+    // NEW: Get the function to add a session to history
+    const { addSessionToHistory } = useSessions();
 
     const handleStageComplete = (stageName, data) => {
+        // NEW: Console log for debugging each stage's data
+        console.log(`--- Data collected for stage: ${stageName.toUpperCase()} ---`, data);
+
         const newResults = { ...results, [stageName]: data };
         setResults(newResults);
 
@@ -44,7 +51,25 @@ function CommunicationPracticePage() {
         else if (stageName === 'comprehension') setStage('scoreSummary');
     };
     
+    // MODIFIED: This function now saves the report
     const handleSummaryComplete = (analysis) => {
+        // 1. Create a session object in the format the dashboard expects
+        const sessionData = {
+            type: 'Communication',
+            date: new Date().toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            }),
+            score: analysis.scores.overall,
+            feedback: analysis // Store the full analysis payload
+        };
+
+        // 2. Use the function from our context to save the session.
+        // This will automatically handle the user ID and save to localStorage.
+        addSessionToHistory(sessionData);
+        
+        // 3. Set the analysis for the results page and move to the final stage
         setFinalAnalysis(analysis);
         setStage('results');
     };
@@ -64,21 +89,19 @@ function CommunicationPracticePage() {
     );
 }
 
-// --- Stage 1: Reading Aloud (HEAVILY REFACTORED) ---
+// --- Stage 1: Reading Aloud (No changes required) ---
 function ReadingStage({ onComplete }) {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [status, setStatus] = useState('idle');
-    const [readingResults, setReadingResults] = useState([]); // This will now store { originalText, audioBlob }
+    const [readingResults, setReadingResults] = useState([]);
     const mediaRecorderRef = useRef(null);
     const timeoutRef = useRef(null);
-    // REMOVED: No more API calls from this component.
 
     const handleNext = () => {
         if (currentIndex < readingParagraphs.length - 1) {
             setCurrentIndex(prev => prev + 1);
             setStatus('idle');
         } else {
-            // Once all paragraphs are recorded, pass the collected data to the parent.
             onComplete(readingResults);
         }
     };
@@ -86,7 +109,7 @@ function ReadingStage({ onComplete }) {
     const stopRecording = () => {
         clearTimeout(timeoutRef.current);
         if (mediaRecorderRef.current?.state === "recording") {
-            mediaRecorderRef.current.stop(); // This will trigger the 'onstop' event listener.
+            mediaRecorderRef.current.stop();
         }
     };
 
@@ -97,25 +120,21 @@ function ReadingStage({ onComplete }) {
         const audioChunks = [];
         mediaRecorderRef.current.ondataavailable = e => audioChunks.push(e.data);
         
-        // MODIFIED: 'onstop' now just collects data, it doesn't call an API.
         mediaRecorderRef.current.onstop = () => {
             const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
             stream.getTracks().forEach(track => track.stop());
-
             if (audioBlob.size > 0) {
-                // Collect the raw data without analyzing it yet.
                 const newResult = {
                     originalText: readingParagraphs[currentIndex],
                     audioBlob: audioBlob,
                 };
                 setReadingResults(prev => [...prev, newResult]);
             }
-            // Automatically move to the next item. The UX is much faster now.
             handleNext();
         };
 
         mediaRecorderRef.current.start();
-        timeoutRef.current = setTimeout(stopRecording, 5000); // 5-second max recording
+        timeoutRef.current = setTimeout(stopRecording, 5000);
     };
 
     return (
@@ -127,9 +146,6 @@ function ReadingStage({ onComplete }) {
             <CardContent>
                 <p className="text-lg mb-8 p-4 bg-slate-100 dark:bg-slate-800 rounded-md">{readingParagraphs[currentIndex]}</p>
                 {status === 'recording' && <div className="text-red-500 mb-4 animate-pulse font-semibold">🔴 Recording...</div>}
-                
-                {/* No more processing spinner needed here */}
-
                 <Button onClick={status === 'recording' ? stopRecording : startRecording} variant={status === 'recording' ? 'destructive' : 'default'} size="lg">
                     {status === 'recording' ? <><div className="w-4 h-4 mr-2 bg-white rounded-sm" /> Stop Recording</> : <><MicIcon className="mr-2" /> Start Recording</>}
                 </Button>
@@ -138,19 +154,18 @@ function ReadingStage({ onComplete }) {
     );
 }
 
-// --- Stage 2: Listen & Repeat (HEAVILY REFACTORED) ---
+// --- Stage 2: Listen & Repeat (No changes required) ---
 function RepetitionStage({ onComplete }) {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [status, setStatus] = useState('idle');
     const [repetitionResults, setRepetitionResults] = useState([]);
     const mediaRecorderRef = useRef(null);
     const timeoutRef = useRef(null);
-    // REMOVED: No more API calls from this component.
 
     const handleNext = () => {
         if (currentIndex < repetitionTasks.length - 1) {
             setCurrentIndex(prev => prev + 1);
-            setStatus('idle'); // Reset for the next item
+            setStatus('idle');
         } else {
             onComplete(repetitionResults);
         }
@@ -214,17 +229,14 @@ function RepetitionStage({ onComplete }) {
     );
 }
 
-// --- Stage 3: Story Comprehension (No changes) ---
+// --- Stage 3: Story Comprehension (No changes required) ---
 function ComprehensionStage({ onComplete }) {
     const [status, setStatus] = useState('idle');
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [selectedOption, setSelectedOption] = useState(null);
     const [comprehensionResults, setComprehensionResults] = useState([]);
-    
-    // MODIFIED: Define marks for correct/incorrect answers.
     const MARKS_CORRECT = 100;
     const MARKS_INCORRECT = 0;
-
     const currentQuestion = storyData.questions[currentQuestionIndex];
 
     const handlePlayStory = () => {
@@ -241,15 +253,12 @@ function ComprehensionStage({ onComplete }) {
         if (selectedOption) return;
         setSelectedOption(option);
         const isCorrect = option === currentQuestion.correctAnswer;
-        
-        // FIXED: The result object now includes a 'score' property.
         const newResult = {
             question: currentQuestion.question,
             selected: option,
             isCorrect: isCorrect,
-            score: isCorrect ? MARKS_CORRECT : MARKS_INCORRECT, // Add the score
+            score: isCorrect ? MARKS_CORRECT : MARKS_INCORRECT,
         };
-
         setTimeout(() => {
             const updatedResults = [...comprehensionResults, newResult];
             setComprehensionResults(updatedResults);
@@ -307,18 +316,16 @@ function ComprehensionStage({ onComplete }) {
 }
 
 
-// --- Score Summary Stage (MODIFIED) ---
+// --- Score Summary Stage (No changes required) ---
 function ScoreSummaryStage({ allResults, onComplete }) {
     const { mutate: analyzeSession, isPending, data: analysisPayload } = useAnalyzeCommunication();
 
     useEffect(() => {
-        // MODIFIED: Added a check for the comprehension results before analyzing.
         if (allResults.reading.length > 0 && allResults.repetition.length > 0 && allResults.comprehension.length > 0) {
             analyzeSession(allResults);
         }
     }, [allResults, analyzeSession]);
 
-    // Display a loading state while the entire session is being analyzed.
     if (isPending || !analysisPayload) {
         return (
             <Card className="max-w-3xl mx-auto text-center">
@@ -332,7 +339,6 @@ function ScoreSummaryStage({ allResults, onComplete }) {
     }
 
     const { scores } = analysisPayload;
-
     return (
         <Card className="max-w-3xl mx-auto text-center">
             <CardHeader>
@@ -357,6 +363,8 @@ function ScoreSummaryStage({ allResults, onComplete }) {
         </Card>
     );
 }
+
+
 
 
 // --- Other components (ScoreCard, ResultsStage, ProgressStepper) are unchanged ---
