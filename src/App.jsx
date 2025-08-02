@@ -1,6 +1,7 @@
 import React from 'react';
 import { createBrowserRouter, RouterProvider, Navigate, Outlet } from 'react-router-dom';
-import { SignedIn, SignedOut, SignIn, SignUp, useUser } from '@clerk/clerk-react';
+// In App.jsx
+import { SignedIn, SignedOut, SignIn, SignUp, useUser, RedirectToSignIn } from '@clerk/clerk-react';
 
 // Layouts
 import AppLayout from './components/layout/AppLayout';
@@ -12,7 +13,6 @@ import ServiceSelectionPage from './pages/ServiceSelectionPage';
 import InterviewSessionPage from './pages/InterviewSessionPage';
 import FeedbackPage from './pages/FeedbackPage';
 import CommunicationPracticePage from './pages/CommunicationPracticePage';
-import LoadingSpinner from './components/common/LoadingSpinner';
 
 /**
  * A wrapper for routes that require authentication.
@@ -20,41 +20,41 @@ import LoadingSpinner from './components/common/LoadingSpinner';
  * If not, it redirects them to the sign-in page.
  * It also handles the initial loading state.
  */
+// In App.jsx
+// In App.jsx
+
 const ProtectedRoute = () => {
-  const { isSignedIn, isLoaded } = useUser();
 
-  if (!isLoaded) {
-    // Show a loading spinner while Clerk is checking the user's session.
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <LoadingSpinner />
-      </div>
-    );
-  }
-
-  if (!isSignedIn) {
-    // If the user is not signed in, redirect them to the sign-in page.
-    return <Navigate to="/sign-in" replace />;
-  }
-
-  // If the user is signed in, render the nested routes inside the AppLayout.
   return (
-    <AppLayout>
-      <Outlet />
-    </AppLayout>
+    <>
+      <SignedIn>
+        <AppLayout>
+          <Outlet />
+        </AppLayout>
+      </SignedIn>
+      <SignedOut>
+        <RedirectToSignIn />
+      </SignedOut>
+    </>
   );
 };
-
 const router = createBrowserRouter([
-  {
-    // Public landing page
-    path: '/',
-    element: (
+  // In App.jsx
+{
+  path: '/',
+  element: (
+    <>
+      <SignedIn>
+        {/* If the user is signed in, redirect them to the dashboard */}
+        <Navigate to="/app/dashboard" replace />
+      </SignedIn>
       <SignedOut>
+        {/* If the user is signed out, show the landing page */}
         <LandingPage />
       </SignedOut>
-    ),
-  },
+    </>
+  ),
+},
   {
     // Clerk's sign-in page
     path: '/sign-in',
