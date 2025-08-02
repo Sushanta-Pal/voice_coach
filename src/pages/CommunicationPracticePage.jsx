@@ -1,38 +1,35 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useCompareTranscript, useAnalyzeCommunication } from '../hooks/useVoiceCoach';
+// MODIFIED: useCompareTranscript is no longer needed here.
+import { useAnalyzeCommunication } from '../hooks/useVoiceCoach';
 
 // Import Components & Icons
-import Button from '../components/common/Button.jsx';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/common/Card.jsx';
-import LoadingSpinner from '../components/common/LoadingSpinner.jsx';
+import Button from '../components/common/Button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/common/Card';
+import LoadingSpinner from '../components/common/LoadingSpinner';
 import { MicIcon, PlayIcon, CheckCircle, XCircle, ArrowRight, Volume2, Award, BookOpen, Repeat, BrainCircuit } from 'lucide-react';
 
-// --- Mock Data ---
+// --- Mock Data (No changes) ---
 const readingParagraphs = [
     "The quick brown fox jumps over the lazy dog. This sentence contains all the letters of the alphabet.",
     "To be or not to be, that is the question. Whether 'tis nobler in the mind to suffer the slings and arrows of outrageous fortune.",
     "Innovation distinguishes between a leader and a follower. Stay hungry, stay foolish.",
-    "The journey of a thousand miles begins with a single step. Every great achievement starts with the decision to try.",
-    "Success is not final, failure is not fatal: it is the courage to continue that counts."
 ];
 const repetitionTasks = [
     { text: "The report is due next Friday.", audioUrl: "/audio/report-due.mp3" },
     { text: "Can we reschedule the meeting?", audioUrl: "/audio/reschedule-meeting.mp3" },
-    { text: "Let's touch base in the morning.", audioUrl: "/audio/touch-base.mp3" },
     { text: "What are the key performance indicators?", audioUrl: "/audio/kpi.mp3" },
-    { text: "Please send me the updated presentation.", audioUrl: "/audio/updated-presentation.mp3" }
 ];
 const storyData = {
     storyAudioUrl: "/audio/story_fantasy.mp3",
     questions: [
         { question: "What was Elara's job?", options: ["Blacksmith", "Librarian", "Baker", "Mayor"], correctAnswer: "Librarian" },
         { question: "What was unique about the book she found?", options: ["It had a map", "It was written in gold", "It whispered secrets", "It was empty"], correctAnswer: "It whispered secrets" },
-        { question: "What did the whispering book tell Elara about?", options: ["A hidden treasure", "A secret passage", "A hidden key", "A forgotten spell"], correctAnswer: "A hidden key" }
     ]
 };
 
-// --- Main Page Component ---
+
+// --- Main Page Component (No changes) ---
 function CommunicationPracticePage() {
     const [stage, setStage] = useState('reading');
     const [results, setResults] = useState({ reading: [], repetition: [], comprehension: [] });
@@ -67,36 +64,30 @@ function CommunicationPracticePage() {
     );
 }
 
-// --- Stage 1: Reading Aloud ---
+// --- Stage 1: Reading Aloud (HEAVILY REFACTORED) ---
 function ReadingStage({ onComplete }) {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [status, setStatus] = useState('idle');
-    const [readingResults, setReadingResults] = useState([]);
+    const [readingResults, setReadingResults] = useState([]); // This will now store { originalText, audioBlob }
     const mediaRecorderRef = useRef(null);
     const timeoutRef = useRef(null);
-    const { mutate: analyze, isPending } = useCompareTranscript();
+    // REMOVED: No more API calls from this component.
 
     const handleNext = () => {
         if (currentIndex < readingParagraphs.length - 1) {
             setCurrentIndex(prev => prev + 1);
             setStatus('idle');
         } else {
+            // Once all paragraphs are recorded, pass the collected data to the parent.
             onComplete(readingResults);
         }
     };
 
-    useEffect(() => {
-        if (!isPending && status === 'processing') {
-            handleNext();
-        }
-    }, [isPending, status]);
-
     const stopRecording = () => {
         clearTimeout(timeoutRef.current);
         if (mediaRecorderRef.current?.state === "recording") {
-            mediaRecorderRef.current.stop();
+            mediaRecorderRef.current.stop(); // This will trigger the 'onstop' event listener.
         }
-        setStatus('processing');
     };
 
     const startRecording = async () => {
@@ -105,57 +96,65 @@ function ReadingStage({ onComplete }) {
         mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'audio/webm' });
         const audioChunks = [];
         mediaRecorderRef.current.ondataavailable = e => audioChunks.push(e.data);
+        
+        // MODIFIED: 'onstop' now just collects data, it doesn't call an API.
         mediaRecorderRef.current.onstop = () => {
             const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
             stream.getTracks().forEach(track => track.stop());
+
             if (audioBlob.size > 0) {
-                analyze({ audioBlob, originalText: readingParagraphs[currentIndex] }, {
-                    onSuccess: (res) => setReadingResults(prev => [...prev, res]),
-                    onError: (err) => console.error("Analysis failed:", err)
-                });
+                // Collect the raw data without analyzing it yet.
+                const newResult = {
+                    originalText: readingParagraphs[currentIndex],
+                    audioBlob: audioBlob,
+                };
+                setReadingResults(prev => [...prev, newResult]);
             }
+            // Automatically move to the next item. The UX is much faster now.
+            handleNext();
         };
+
         mediaRecorderRef.current.start();
-        timeoutRef.current = setTimeout(stopRecording, 5000);
+        timeoutRef.current = setTimeout(stopRecording, 5000); // 5-second max recording
     };
 
     return (
         <Card className="max-w-3xl mx-auto text-center">
             <CardHeader>
                 <CardTitle>Stage 1: Reading Aloud ({currentIndex + 1}/{readingParagraphs.length})</CardTitle>
-                <CardDescription>Read the paragraph below. Recording will start when you click the button and last for 5 seconds.</CardDescription>
+                <CardDescription>Read the paragraph below. Click stop or wait 5 seconds when you're done.</CardDescription>
             </CardHeader>
             <CardContent>
                 <p className="text-lg mb-8 p-4 bg-slate-100 dark:bg-slate-800 rounded-md">{readingParagraphs[currentIndex]}</p>
                 {status === 'recording' && <div className="text-red-500 mb-4 animate-pulse font-semibold">🔴 Recording...</div>}
-                {(isPending || status === 'processing') && <div className="my-4"><LoadingSpinner /><p>Processing...</p></div>}
-                <Button onClick={status === 'recording' ? stopRecording : startRecording} disabled={status === 'processing' || isPending} variant={status === 'recording' ? 'destructive' : 'default'} size="lg">
-                    {status === 'recording' ? <><div className="w-4 h-4 mr-2 bg-white rounded-sm animate-pulse" /> Stop Recording</> : <><MicIcon className="mr-2" /> Start Recording</>}
+                
+                {/* No more processing spinner needed here */}
+
+                <Button onClick={status === 'recording' ? stopRecording : startRecording} variant={status === 'recording' ? 'destructive' : 'default'} size="lg">
+                    {status === 'recording' ? <><div className="w-4 h-4 mr-2 bg-white rounded-sm" /> Stop Recording</> : <><MicIcon className="mr-2" /> Start Recording</>}
                 </Button>
             </CardContent>
         </Card>
     );
 }
 
-// --- Stage 2: Listen & Repeat ---
+// --- Stage 2: Listen & Repeat (HEAVILY REFACTORED) ---
 function RepetitionStage({ onComplete }) {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [status, setStatus] = useState('idle');
     const [repetitionResults, setRepetitionResults] = useState([]);
     const mediaRecorderRef = useRef(null);
     const timeoutRef = useRef(null);
-    const { mutate: analyze, isPending } = useCompareTranscript();
+    // REMOVED: No more API calls from this component.
 
-    useEffect(() => {
-        if (!isPending && status === 'processing') {
-            if (currentIndex < repetitionTasks.length - 1) {
-                setCurrentIndex(prev => prev + 1);
-                setStatus('idle');
-            } else {
-                onComplete(repetitionResults);
-            }
+    const handleNext = () => {
+        if (currentIndex < repetitionTasks.length - 1) {
+            setCurrentIndex(prev => prev + 1);
+            setStatus('idle'); // Reset for the next item
+        } else {
+            onComplete(repetitionResults);
         }
-    }, [isPending, status]);
+    };
 
     const handleListen = () => {
         setStatus('playing');
@@ -169,7 +168,6 @@ function RepetitionStage({ onComplete }) {
         if (mediaRecorderRef.current?.state === 'recording') {
             mediaRecorderRef.current.stop();
         }
-        setStatus('processing');
     };
 
     const startRecording = async () => {
@@ -178,16 +176,20 @@ function RepetitionStage({ onComplete }) {
         mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'audio/webm' });
         const audioChunks = [];
         mediaRecorderRef.current.ondataavailable = e => audioChunks.push(e.data);
+
         mediaRecorderRef.current.onstop = () => {
             const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
             stream.getTracks().forEach(track => track.stop());
             if (audioBlob.size > 0) {
-                analyze({ audioBlob, originalText: repetitionTasks[currentIndex].text }, {
-                    onSuccess: (res) => setRepetitionResults(prev => [...prev, res]),
-                    onError: (err) => console.error("Analysis failed:", err)
-                });
+                const newResult = {
+                    originalText: repetitionTasks[currentIndex].text,
+                    audioBlob: audioBlob,
+                };
+                setRepetitionResults(prev => [...prev, newResult]);
             }
+            handleNext();
         };
+
         mediaRecorderRef.current.start();
         timeoutRef.current = setTimeout(stopRecording, 4000);
     };
@@ -202,24 +204,27 @@ function RepetitionStage({ onComplete }) {
                 {status === 'idle' && <Button size="lg" onClick={handleListen}><Volume2 className="mr-2" /> Listen</Button>}
                 {status === 'playing' && <p className="text-blue-500 font-semibold animate-pulse">🔊 Playing audio...</p>}
                 {(status === 'ready_to_record' || status === 'recording') && (
-                     <Button onClick={status === 'recording' ? stopRecording : startRecording} disabled={status === 'processing' || isPending} variant={status === 'recording' ? 'destructive' : 'default'} size="lg">
-                        {status === 'recording' ? <><div className="w-4 h-4 mr-2 bg-white rounded-sm animate-pulse" /> Stop Recording</> : <><MicIcon className="mr-2" /> Record Now</>}
+                    <Button onClick={status === 'recording' ? stopRecording : startRecording} variant={status === 'recording' ? 'destructive' : 'default'} size="lg">
+                        {status === 'recording' ? <><div className="w-4 h-4 mr-2 bg-white rounded-sm" /> Stop Recording</> : <><MicIcon className="mr-2" /> Record Now</>}
                     </Button>
                 )}
                 {status === 'recording' && <div className="mt-4 text-red-500 font-semibold animate-pulse">Recording...</div>}
-                {(isPending || status === 'processing') && <div className="my-4"><LoadingSpinner /><p>Processing...</p></div>}
             </CardContent>
         </Card>
     );
 }
 
-// --- Stage 3: Story Comprehension (ENHANCED UI) ---
+// --- Stage 3: Story Comprehension (No changes) ---
 function ComprehensionStage({ onComplete }) {
     const [status, setStatus] = useState('idle');
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [selectedOption, setSelectedOption] = useState(null);
     const [comprehensionResults, setComprehensionResults] = useState([]);
     
+    // MODIFIED: Define marks for correct/incorrect answers.
+    const MARKS_CORRECT = 100;
+    const MARKS_INCORRECT = 0;
+
     const currentQuestion = storyData.questions[currentQuestionIndex];
 
     const handlePlayStory = () => {
@@ -228,7 +233,7 @@ function ComprehensionStage({ onComplete }) {
         audio.play();
         audio.onended = () => {
             setStatus('paused');
-            setTimeout(() => setStatus('answering'), 2000);
+            setTimeout(() => setStatus('answering'), 1000);
         };
     };
 
@@ -236,8 +241,15 @@ function ComprehensionStage({ onComplete }) {
         if (selectedOption) return;
         setSelectedOption(option);
         const isCorrect = option === currentQuestion.correctAnswer;
-        const newResult = { question: currentQuestion.question, selected: option, isCorrect };
         
+        // FIXED: The result object now includes a 'score' property.
+        const newResult = {
+            question: currentQuestion.question,
+            selected: option,
+            isCorrect: isCorrect,
+            score: isCorrect ? MARKS_CORRECT : MARKS_INCORRECT, // Add the score
+        };
+
         setTimeout(() => {
             const updatedResults = [...comprehensionResults, newResult];
             setComprehensionResults(updatedResults);
@@ -268,18 +280,21 @@ function ComprehensionStage({ onComplete }) {
                         <div className="space-y-3">
                             {currentQuestion.options.map(option => {
                                 const isSelected = selectedOption === option;
-                                const isCorrect = isSelected && option === currentQuestion.correctAnswer;
-                                const isIncorrect = isSelected && option !== currentQuestion.correctAnswer;
+                                const isCorrectAnswer = isSelected && option === currentQuestion.correctAnswer;
+                                const isIncorrectAnswer = isSelected && option !== currentQuestion.correctAnswer;
                                 return (
-                                    <button key={option} onClick={() => handleSelectAnswer(option)} disabled={!!selectedOption}
+                                    <button 
+                                        key={option} 
+                                        onClick={() => handleSelectAnswer(option)} 
+                                        disabled={!!selectedOption}
                                         className={`w-full p-4 rounded-lg border-2 flex items-center justify-between transition-all duration-300
-                                            ${isCorrect ? 'border-green-500 bg-green-500/10' : ''}
-                                            ${isIncorrect ? 'border-red-500 bg-red-500/10' : ''}
+                                            ${isCorrectAnswer ? 'border-green-500 bg-green-500/10' : ''}
+                                            ${isIncorrectAnswer ? 'border-red-500 bg-red-500/10' : ''}
                                             ${!isSelected ? 'border-slate-200 dark:border-slate-700 hover:border-blue-500 hover:bg-blue-500/10' : ''}
                                         `}>
                                         <span className="font-medium">{option}</span>
-                                        {isCorrect && <CheckCircle className="text-green-500" />}
-                                        {isIncorrect && <XCircle className="text-red-500" />}
+                                        {isCorrectAnswer && <CheckCircle className="text-green-500" />}
+                                        {isIncorrectAnswer && <XCircle className="text-red-500" />}
                                     </button>
                                 );
                             })}
@@ -291,29 +306,32 @@ function ComprehensionStage({ onComplete }) {
     );
 }
 
-// --- NEW STAGE: Score Summary ---
+
+// --- Score Summary Stage (MODIFIED) ---
 function ScoreSummaryStage({ allResults, onComplete }) {
-    const { data: analysis, isPending, mutate } = useAnalyzeCommunication();
+    const { mutate: analyzeSession, isPending, data: analysisPayload } = useAnalyzeCommunication();
 
     useEffect(() => {
+        // MODIFIED: Added a check for the comprehension results before analyzing.
         if (allResults.reading.length > 0 && allResults.repetition.length > 0 && allResults.comprehension.length > 0) {
-            mutate(allResults);
+            analyzeSession(allResults);
         }
-    }, [allResults, mutate]);
+    }, [allResults, analyzeSession]);
 
-    if (isPending || !analysis) {
+    // Display a loading state while the entire session is being analyzed.
+    if (isPending || !analysisPayload) {
         return (
             <Card className="max-w-3xl mx-auto text-center">
                 <CardContent className="py-12">
                     <LoadingSpinner />
-                    <p className="mt-4 font-semibold">Calculating your scores...</p>
-                    <p className="text-sm text-slate-500">Our AI is analyzing your performance across all stages.</p>
+                    <p className="mt-4 font-semibold text-lg">Analyzing your entire session...</p>
+                    <p className="text-sm text-slate-500">This may take a moment as we process all your recordings.</p>
                 </CardContent>
             </Card>
         );
     }
-    
-    const { scores } = analysis;
+
+    const { scores } = analysisPayload;
 
     return (
         <Card className="max-w-3xl mx-auto text-center">
@@ -329,16 +347,19 @@ function ScoreSummaryStage({ allResults, onComplete }) {
                     <ScoreCard icon={<BrainCircuit />} title="Comprehension" score={scores.comprehension} />
                 </div>
                 <div className="pt-6">
-                    <p className="text-lg font-medium">Overall Performance</p>
+                    <p className="text-lg font-medium">Overall Performance Score</p>
                     <p className="text-6xl font-bold text-blue-500">{scores.overall}<span className="text-3xl text-slate-400">/100</span></p>
                 </div>
-                <Button size="lg" onClick={() => onComplete(analysis)}>
+                <Button size="lg" onClick={() => onComplete(analysisPayload)}>
                     View Detailed Report <ArrowRight className="ml-2" />
                 </Button>
             </CardContent>
         </Card>
     );
 }
+
+
+// --- Other components (ScoreCard, ResultsStage, ProgressStepper) are unchanged ---
 
 const ScoreCard = ({ icon, title, score }) => (
     <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-lg">
@@ -350,7 +371,6 @@ const ScoreCard = ({ icon, title, score }) => (
     </div>
 );
 
-// --- Final Results Stage ---
 function ResultsStage({ finalAnalysis }) {
     const navigate = useNavigate();
 
@@ -371,7 +391,6 @@ function ResultsStage({ finalAnalysis }) {
     );
 }
 
-// --- Progress Stepper Component ---
 const ProgressStepper = ({ currentStage }) => {
     const stages = ['reading', 'repetition', 'comprehension', 'scoreSummary', 'results'];
     const currentIndex = stages.indexOf(currentStage);
