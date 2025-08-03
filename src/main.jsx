@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ClerkProvider } from '@clerk/clerk-react';
 
 import { SessionProvider } from './providers/SessionProvider';
+import { ThemeProvider } from './providers/ThemeProvider';
 import App from './App';
 import './index.css';
 
@@ -23,7 +24,9 @@ root.render(
     <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
       <QueryClientProvider client={queryClient}>
         <SessionProvider>
-          <App /> {/* App now provides the router itself */}
+          <ThemeProvider>
+            <App /> {/* App now provides the router itself */}
+          </ThemeProvider>
         </SessionProvider>
       </QueryClientProvider>
     </ClerkProvider>
