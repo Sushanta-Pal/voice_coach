@@ -1,30 +1,31 @@
-import React from 'react';
-import { createBrowserRouter, RouterProvider, Navigate, Outlet } from 'react-router-dom';
-// In App.jsx
-import { SignedIn, SignedOut, SignIn, SignUp, useUser, RedirectToSignIn } from '@clerk/clerk-react';
+import React from "react";
+import {
+  createBrowserRouter,
+  RouterProvider,
+  Navigate,
+  Outlet,
+} from "react-router-dom";
+import { SignedIn, SignedOut, RedirectToSignIn } from "@clerk/clerk-react";
 
-// Layouts
-import AppLayout from './components/layout/AppLayout';
+// Import Layouts
+import AppLayout from "./components/layout/AppLayout";
 
-// Pages
-import LandingPage from './pages/LondingPage';
-import DashboardPage from './pages/DashboardPage';
-import ServiceSelectionPage from './pages/ServiceSelectionPage';
-import InterviewSessionPage from './pages/InterviewSessionPage';
-import FeedbackPage from './pages/FeedbackPage';
-import CommunicationPracticePage from './pages/CommunicationPracticePage';
+// Import Pages
+import LandingPage from "./pages/LandingPage";
+import DashboardPage from "./pages/DashboardPage";
+import ServiceSelectionPage from "./pages/ServiceSelectionPage";
+import InterviewSessionPage from "./pages/InterviewSessionPage";
+import FeedbackPage from "./pages/FeedbackPage";
+import CommunicationPracticePage from "./pages/CommunicationPracticePage";
 
 /**
- * A wrapper for routes that require authentication.
- * It checks if a user is signed in with Clerk.
+ * @name ProtectedRoute
+ * @description A component that wraps protected routes.
+ * It uses Clerk's <SignedIn> and <SignedOut> components to manage access.
+ * If the user is signed in, it renders the main application layout.
  * If not, it redirects them to the sign-in page.
- * It also handles the initial loading state.
  */
-// In App.jsx
-// In App.jsx
-
 const ProtectedRoute = () => {
-
   return (
     <>
       <SignedIn>
@@ -38,54 +39,83 @@ const ProtectedRoute = () => {
     </>
   );
 };
+
+/**
+ * @name router
+ * @description The main router configuration for the application using createBrowserRouter.
+ */
 const router = createBrowserRouter([
-  // In App.jsx
-{
-  path: '/',
-  element: (
-    <>
-      <SignedIn>
-        {/* If the user is signed in, redirect them to the dashboard */}
-        <Navigate to="/app/dashboard" replace />
-      </SignedIn>
-      <SignedOut>
-        {/* If the user is signed out, show the landing page */}
-        <LandingPage />
-      </SignedOut>
-    </>
-  ),
-},
+  // --- Public Routes ---
   {
-    // Clerk's sign-in page
-    path: '/sign-in',
-    element: <SignIn routing="path" path="/sign-in" afterSignInUrl="/app/dashboard" />,
+    // The root path of the application.
+    // It conditionally renders based on the user's authentication state.
+    path: "/",
+    element: (
+      <>
+        <SignedIn>
+          {/* If the user is signed in, immediately redirect them to their dashboard. */}
+          <Navigate to="/app/dashboard" replace />
+        </SignedIn>
+        <SignedOut>
+          {/* If the user is signed out, show the public landing page. */}
+          <LandingPage />
+        </SignedOut>
+      </>
+    ),
   },
+
+  // --- Protected Application Routes ---
   {
-    // Clerk's sign-up page
-    path: '/sign-up',
-    element: <SignUp routing="path" path="/sign-up" afterSignUpUrl="/app/dashboard" />,
-  },
-  {
-    // Protected application routes
-    path: '/app',
-    element: <ProtectedRoute />,
+    // This is the main entry point for the authenticated part of the app.
+    path: "/app",
+    element: <ProtectedRoute />, // This route and all its children are protected.
     children: [
-      { path: 'dashboard', element: <DashboardPage /> },
-      { path: 'new-session', element: <ServiceSelectionPage /> },
-      { path: 'practice', element: <InterviewSessionPage /> },
-      { path: 'communication-practice', element: <CommunicationPracticePage /> },
-      { path: 'feedback/:sessionId', element: <FeedbackPage /> },
-      // Redirect from /app to /app/dashboard
-      { path: '', element: <Navigate to="dashboard" replace /> }
+      {
+        // The main dashboard page.
+        path: "dashboard",
+        element: <DashboardPage />,
+      },
+      {
+        // Page to select a new practice session type.
+        path: "new-session",
+        element: <ServiceSelectionPage />,
+      },
+      {
+        // The practice page for Technical/HR interviews.
+        path: "practice",
+        element: <InterviewSessionPage />,
+      },
+      {
+        // The practice page for communication skills.
+        path: "communication-practice",
+        element: <CommunicationPracticePage />,
+      },
+      {
+        // The feedback page, which takes a dynamic session ID.
+        path: "feedback/:sessionId",
+        element: <FeedbackPage />,
+      },
+      {
+        // If a user navigates to just "/app", redirect them to the dashboard.
+        path: "",
+        element: <Navigate to="dashboard" replace />,
+      },
     ],
   },
+
+  // --- Catch-all Route ---
   {
-    // Redirect any unknown paths
-    path: '*',
+    // This will match any path that hasn't been matched by the routes above.
+    // It redirects any unknown URL back to the root, preventing 404 errors.
+    path: "*",
     element: <Navigate to="/" replace />,
   },
 ]);
 
+/**
+ * @name App
+ * @description The root component of the application which provides the router.
+ */
 function App() {
   return <RouterProvider router={router} />;
 }

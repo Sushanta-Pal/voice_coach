@@ -75,5 +75,5 @@ export const transcribeAudio = async (audioBlob) => {
     }
 
     const result = await response.json();
-    return result.transcript;
+    return result;
 };
