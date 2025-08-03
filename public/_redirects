@@ -1,0 +1,5 @@
+# This is a rewrite rule for single-page applications (SPAs).
+# It tells the server to serve the index.html file for any path that isn't a real file.
+# This allows client-side routing (like React Router) to handle the URL.
+
+/* /index.html    200
