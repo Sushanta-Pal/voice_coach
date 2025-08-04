@@ -6,10 +6,19 @@ export const useAnalyzeAnswer = () => {
     return useMutation({
         mutationFn: async ({ question, answer, sessionType, audioBlob }) => {
             let finalAnswer = answer;
+
+            // Check if there is an audio blob to transcribe.
             if (audioBlob) {
-                finalAnswer = await transcribeAudio(audioBlob);
+                // Transcribe the audio.
+                const transcriptionResult = await transcribeAudio(audioBlob);
+                
+                // FIX: Extract the 'text' property from the transcription result object.
+                // This ensures 'finalAnswer' is a string, preventing the .replace() error.
+                // A fallback to an empty string is added for safety.
+                finalAnswer = transcriptionResult.text || '';
             }
 
+            // Construct the prompt for the Gemini API.
             const prompt = `
                 You are an expert interview coach for a platform called VoiceCoach.
                 A user is practicing for a ${sessionType} interview.
@@ -30,18 +39,23 @@ export const useAnalyzeAnswer = () => {
                   "improvements": [<an array of strings>]
                 }
             `;
+            // Call the Gemini API with the constructed prompt.
             return callGeminiAPI(prompt);
         },
     });
 };
 
 // Hook for comparing spoken text to original text
-// Note: This hook is not used in the "collect then analyze" flow but is useful for other features.
 export const useCompareTranscript = () => {
     return useMutation({
         mutationFn: async ({ audioBlob, originalText }) => {
-            const transcribedText = await transcribeAudio(audioBlob);
+            // Transcribe the audio.
+            const transcriptionResult = await transcribeAudio(audioBlob);
 
+            // FIX: Extract the 'text' property from the transcription result object.
+            const transcribedText = transcriptionResult.text || '';
+
+            // Construct the prompt for the Gemini API.
             const prompt = `
                 Analyze the following speech comparison for accuracy.
                 Original Text: "${originalText}"
@@ -54,6 +68,7 @@ export const useCompareTranscript = () => {
                   "feedback": "A short feedback message."
                 }
             `;
+            // Call the Gemini API and merge the result with the original text.
             const analysisResult = await callGeminiAPI(prompt);
             return { ...analysisResult, originalText };
         },
@@ -113,17 +128,20 @@ export const useAnalyzeCommunication = () => {
             const repetitionTranscriptionPromises = allResults.repetition.map(result => transcribeAudio(result.audioBlob));
             
             const allPromises = [...readingTranscriptionPromises, ...repetitionTranscriptionPromises];
-            const allTranscripts = await Promise.all(allPromises);
+            const allTranscriptionResults = await Promise.all(allPromises);
 
             // 2. Map transcripts back to their original texts.
             const transcribedReadingResults = allResults.reading.map((result, index) => ({
                 originalText: result.originalText,
-                transcribedText: allTranscripts[index],
+                // FIX: Extract the 'text' property from each result.
+                transcribedText: allTranscriptionResults[index]?.text || '',
             }));
 
+            const repetitionStartIndex = allResults.reading.length;
             const transcribedRepetitionResults = allResults.repetition.map((result, index) => ({
                 originalText: result.originalText,
-                transcribedText: allTranscripts[index + allResults.reading.length],
+                // FIX: Extract the 'text' property from each result.
+                transcribedText: allTranscriptionResults[repetitionStartIndex + index]?.text || '',
             }));
             
             // 3. Construct the single, large prompt for Gemini.

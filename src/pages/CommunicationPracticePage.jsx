@@ -7,53 +7,75 @@ import { useSessions } from '../hooks/useSessions';
 import Button from '../components/common/Button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/common/Card';
 import LoadingSpinner from '../components/common/LoadingSpinner';
-import { MicIcon, PlayIcon, CheckCircle, XCircle, ArrowRight, Volume2, Award, BookOpen, Repeat, BrainCircuit } from 'lucide-react';
-
-// --- Expanded Mock Data ---
-const readingParagraphs = [
-    "The sun dipped below the horizon, painting the sky in shades of orange and purple. A gentle breeze rustled the leaves in the trees, creating a soft, whispering sound that seemed to tell stories of the day's end.",
-    "Effective project management requires a delicate balance of clear communication, meticulous planning, and the flexibility to adapt to unforeseen challenges. A successful project manager must be a leader, a motivator, and a problem-solver all at once.",
-    "The ancient library was a labyrinth of towering shelves, each one filled with books bound in leather and smelling of dust and time. Every volume held a different world, a different secret, waiting patiently to be discovered.",
-    "Artificial intelligence is rapidly transforming industries across the globe, from healthcare and finance to transportation and entertainment. Its potential to solve complex problems is immense, but it also raises important ethical questions that we must address as a society.",
-    "To achieve a state of flow, one must be fully immersed in an activity, feeling energized, focused, and enjoying the process. It's a state of deep concentration where productivity and creativity often peak, leading to a profound sense of accomplishment."
-];
-
-const repetitionTasks = [
-    { text: "The report is due next Friday.", audioUrl: "/audio/report-due.mp3" },
-    { text: "Can we reschedule the meeting?", audioUrl: "/audio/reschedule-meeting.mp3" },
-    { text: "What are the key performance indicators?", audioUrl: "/audio/kpi.mp3" },
-    { text: "Let's touch base tomorrow morning to review the project status.", audioUrl: "/audio/touch-base.mp3" },
-    { text: "Could you please send over the updated presentation slides?", audioUrl: "/audio/updated-presentation.mp3" }
-];
-
-const storyData = [
-    {
-        storyAudioUrl: "/audio/story_fantasy.mp3",
-        questions: [
-            { question: "What was Elara's profession?", options: ["Blacksmith", "Librarian", "Baker", "Mayor"], correctAnswer: "Librarian" },
-            { question: "What was unique about the book she discovered?", options: ["It had a golden cover", "It was written in an unknown language", "It whispered secrets to her", "It was completely empty"], correctAnswer: "It whispered secrets to her" },
-            { question: "What did the book reveal a map to?", options: ["A hidden city", "A secret garden", "A lost treasure", "An ancient forest"], correctAnswer: "A hidden city" }
-        ]
-    },
-    {
-        storyAudioUrl: "/audio/story_email.mp3", 
-        questions: [
-            { question: "What was the initial problem with Anjali's email?", options: ["It lacked specific details", "It was sent to the wrong person", "It was too long and confusing", "It had several spelling mistakes"], correctAnswer: "It lacked specific details" },
-            { question: "What information did Anjali include in her second email?", options: ["Her manager's contact number", "A screenshot of a different error", "The server's IP address and application name", "An apology for the inconvenience"], correctAnswer: "The server's IP address and application name" },
-            { question: "What does the acronym 'ASAP' stand for?", options: ["All Systems Are Perfect", "Another Software Application Problem", "Always Submit After Proofreading", "As Soon As Possible"], correctAnswer: "As Soon As Possible" }
-        ]
-    }
-];
+import { MicIcon, PlayIcon, CheckCircle, XCircle, ArrowRight, Volume2, Award, BookOpen, Repeat, BrainCircuit, Expand } from 'lucide-react';
 
 // --- Main Page Component ---
 function CommunicationPracticePage() {
-    const [stage, setStage] = useState('reading');
+    // MODIFIED: Start at a 'ready' stage to allow user to initiate fullscreen
+    const [stage, setStage] = useState('ready');
     const [results, setResults] = useState({ reading: [], repetition: [], comprehension: [] });
     const [finalAnalysis, setFinalAnalysis] = useState(null);
     const { addSessionToHistory } = useSessions();
 
+    const [isLoading, setIsLoading] = useState(true);
+    const [practiceSet, setPracticeSet] = useState(null);
+    const navigate = useNavigate();
+
+    // --- Fullscreen and Navigation Lock Logic ---
+    useEffect(() => {
+        // Function to handle the 'beforeunload' event
+        const handleBeforeUnload = (e) => {
+            // If the session is in progress, show a confirmation message
+            if (stage !== 'ready' && stage !== 'results') {
+                e.preventDefault();
+                e.returnValue = ''; // Required for Chrome
+            }
+        };
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
+
+        // Cleanup function to remove the event listener and exit fullscreen
+        return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+            if (document.fullscreenElement) {
+                document.exitFullscreen();
+            }
+        };
+    }, [stage]); // Rerun this effect if the stage changes
+
+    // --- Data Fetching Logic ---
+    useEffect(() => {
+        // Only fetch data if we are past the initial 'ready' screen
+        if (stage === 'loading') {
+            const fetchPracticeSet = async () => {
+                try {
+                    const response = await fetch('/communication-practice.json');
+                    const data = await response.json();
+                    if(response.ok) console.log("Question fatch success fully ");
+                    const randomIndex = Math.floor(Math.random() * data.sets.length);
+                    setPracticeSet(data.sets[randomIndex]);
+                    setStage('reading'); // Move to the first stage after data is loaded
+                } catch (error) {
+                    console.error("Failed to load communication practice set:", error);
+                    alert("Could not load the practice set. Please try again later.");
+                    navigate('/app/dashboard'); // Navigate away on error
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+            fetchPracticeSet();
+        }
+    }, [stage, navigate]); // Depend on 'stage' to trigger the fetch
+
+    const handleStartSession = () => {
+        document.documentElement.requestFullscreen().catch(err => {
+            console.log(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+        });
+        setIsLoading(true);
+        setStage('loading'); // Set stage to loading to trigger data fetch
+    };
+
     const handleStageComplete = (stageName, data) => {
-        console.log(`--- Data collected for stage: ${stageName.toUpperCase()} ---`, data);
         const newResults = { ...results, [stageName]: data };
         setResults(newResults);
 
@@ -72,16 +94,56 @@ function CommunicationPracticePage() {
         addSessionToHistory(sessionData);
         setFinalAnalysis(analysis);
         setStage('results');
+        // Exit fullscreen when results are shown
+        if (document.fullscreenElement) {
+            document.exitFullscreen();
+        }
     };
 
+    // --- Render Logic ---
+
+    // Initial screen to start the session
+    if (stage === 'ready') {
+        return (
+            <div className="flex flex-col h-screen items-center justify-center text-center p-4">
+                <Card className="max-w-xl">
+                    <CardHeader>
+                        <CardTitle className="text-3xl">Communication Coach</CardTitle>
+                        <CardDescription className="text-lg pt-2">
+                            You are about to begin a focused practice session. This will enter fullscreen to minimize distractions.
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Button size="lg" onClick={handleStartSession}>
+                            <Expand className="mr-2 h-5 w-5" />
+                            Start Focused Session
+                        </Button>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
+
+    // Loading screen while fetching data
+    if (isLoading || !practiceSet) {
+        return (
+            <div className="flex h-screen items-center justify-center">
+                <LoadingSpinner />
+                <p className="ml-4">Preparing your communication exercises...</p>
+            </div>
+        );
+    }
+
+    // Main session UI
     return (
         <div className="container mx-auto py-8">
-            <h1 className="text-center text-4xl font-bold tracking-tight mb-4">Communication Coach</h1>
+            <h1 className="text-center text-4xl font-bold tracking-tight mb-2">Communication Coach</h1>
+            <p className="text-center text-lg text-slate-500 mb-4">Practice Set: "{practiceSet.setName}"</p>
             <ProgressStepper currentStage={stage} />
             <div className="mt-8">
-                {stage === 'reading' && <ReadingStage onComplete={(data) => handleStageComplete('reading', data)} />}
-                {stage === 'repetition' && <RepetitionStage onComplete={(data) => handleStageComplete('repetition', data)} />}
-                {stage === 'comprehension' && <ComprehensionStage onComplete={(data) => handleStageComplete('comprehension', data)} />}
+                {stage === 'reading' && <ReadingStage paragraphs={practiceSet.reading} onComplete={(data) => handleStageComplete('reading', data)} />}
+                {stage === 'repetition' && <RepetitionStage tasks={practiceSet.repetition} onComplete={(data) => handleStageComplete('repetition', data)} />}
+                {stage === 'comprehension' && <ComprehensionStage stories={practiceSet.comprehension} onComplete={(data) => handleStageComplete('comprehension', data)} />}
                 {stage === 'scoreSummary' && <ScoreSummaryStage allResults={results} onComplete={handleSummaryComplete} />}
                 {stage === 'results' && <ResultsStage finalAnalysis={finalAnalysis} />}
             </div>
@@ -89,8 +151,8 @@ function CommunicationPracticePage() {
     );
 }
 
-// --- Stage 1: Reading Aloud ---
-function ReadingStage({ onComplete }) {
+// --- Stage 1: Reading Aloud (Accepts 'paragraphs' prop) ---
+function ReadingStage({ paragraphs, onComplete }) {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [status, setStatus] = useState('idle');
     const [readingResults, setReadingResults] = useState([]);
@@ -98,7 +160,7 @@ function ReadingStage({ onComplete }) {
     const timeoutRef = useRef(null);
 
     const handleNext = () => {
-        if (currentIndex < readingParagraphs.length - 1) {
+        if (currentIndex < paragraphs.length - 1) {
             setCurrentIndex(prev => prev + 1);
             setStatus('idle');
         } else {
@@ -115,37 +177,41 @@ function ReadingStage({ onComplete }) {
 
     const startRecording = async () => {
         setStatus('recording');
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-        const audioChunks = [];
-        mediaRecorderRef.current.ondataavailable = e => audioChunks.push(e.data);
-        
-        mediaRecorderRef.current.onstop = () => {
-            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-            stream.getTracks().forEach(track => track.stop());
-            if (audioBlob.size > 0) {
-                const newResult = {
-                    originalText: readingParagraphs[currentIndex],
-                    audioBlob: audioBlob,
-                };
-                setReadingResults(prev => [...prev, newResult]);
-            }
-            handleNext();
-        };
-
-        mediaRecorderRef.current.start();
-        // MODIFIED: Increased recording time to 7 seconds
-        timeoutRef.current = setTimeout(stopRecording, 7000);
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+            const audioChunks = [];
+            mediaRecorderRef.current.ondataavailable = e => audioChunks.push(e.data);
+            
+            mediaRecorderRef.current.onstop = () => {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                stream.getTracks().forEach(track => track.stop());
+                if (audioBlob.size > 0) {
+                    const newResult = {
+                        originalText: paragraphs[currentIndex],
+                        audioBlob: audioBlob,
+                    };
+                    setReadingResults(prev => [...prev, newResult]);
+                }
+                handleNext();
+            };
+    
+            mediaRecorderRef.current.start();
+            timeoutRef.current = setTimeout(stopRecording, 7000);
+        } catch (err) {
+            alert("Microphone permission is required for this exercise.");
+            setStatus('idle');
+        }
     };
 
     return (
         <Card className="max-w-3xl mx-auto text-center">
             <CardHeader>
-                <CardTitle>Stage 1: Reading Aloud ({currentIndex + 1}/{readingParagraphs.length})</CardTitle>
+                <CardTitle>Stage 1: Reading Aloud ({currentIndex + 1}/{paragraphs.length})</CardTitle>
                 <CardDescription>Read the paragraph below. The recording will stop automatically after 7 seconds.</CardDescription>
             </CardHeader>
             <CardContent>
-                <p className="text-lg mb-8 p-4 bg-slate-100 dark:bg-slate-800 rounded-md">{readingParagraphs[currentIndex]}</p>
+                <p className="text-lg mb-8 p-4 bg-slate-100 dark:bg-slate-800 rounded-md">{paragraphs[currentIndex]}</p>
                 {status === 'recording' && <div className="text-red-500 mb-4 animate-pulse font-semibold">🔴 Recording...</div>}
                 <Button onClick={status === 'recording' ? stopRecording : startRecording} variant={status === 'recording' ? 'destructive' : 'default'} size="lg">
                     {status === 'recording' ? <><div className="w-4 h-4 mr-2 bg-white rounded-sm" /> Stop Recording</> : <><MicIcon className="mr-2" /> Start Recording</>}
@@ -155,8 +221,8 @@ function ReadingStage({ onComplete }) {
     );
 }
 
-// --- Stage 2: Listen & Repeat ---
-function RepetitionStage({ onComplete }) {
+// --- Stage 2: Listen & Repeat (Accepts 'tasks' prop) ---
+function RepetitionStage({ tasks, onComplete }) {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [status, setStatus] = useState('idle');
     const [repetitionResults, setRepetitionResults] = useState([]);
@@ -164,7 +230,7 @@ function RepetitionStage({ onComplete }) {
     const timeoutRef = useRef(null);
 
     const handleNext = () => {
-        if (currentIndex < repetitionTasks.length - 1) {
+        if (currentIndex < tasks.length - 1) {
             setCurrentIndex(prev => prev + 1);
             setStatus('idle');
         } else {
@@ -174,8 +240,11 @@ function RepetitionStage({ onComplete }) {
 
     const handleListen = () => {
         setStatus('playing');
-        const audio = new Audio(repetitionTasks[currentIndex].audioUrl);
-        audio.play();
+        const audio = new Audio(tasks[currentIndex].audioUrl);
+        audio.play().catch(err => {
+            console.error("Error playing audio:", err);
+            setStatus('idle');
+        });
         audio.onended = () => setStatus('ready_to_record');
     };
 
@@ -188,33 +257,37 @@ function RepetitionStage({ onComplete }) {
 
     const startRecording = async () => {
         setStatus('recording');
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-        const audioChunks = [];
-        mediaRecorderRef.current.ondataavailable = e => audioChunks.push(e.data);
-
-        mediaRecorderRef.current.onstop = () => {
-            const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-            stream.getTracks().forEach(track => track.stop());
-            if (audioBlob.size > 0) {
-                const newResult = {
-                    originalText: repetitionTasks[currentIndex].text,
-                    audioBlob: audioBlob,
-                };
-                setRepetitionResults(prev => [...prev, newResult]);
-            }
-            handleNext();
-        };
-
-        mediaRecorderRef.current.start();
-        // MODIFIED: Increased recording time to 6 seconds
-        timeoutRef.current = setTimeout(stopRecording, 6000);
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+            const audioChunks = [];
+            mediaRecorderRef.current.ondataavailable = e => audioChunks.push(e.data);
+    
+            mediaRecorderRef.current.onstop = () => {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                stream.getTracks().forEach(track => track.stop());
+                if (audioBlob.size > 0) {
+                    const newResult = {
+                        originalText: tasks[currentIndex].text,
+                        audioBlob: audioBlob,
+                    };
+                    setRepetitionResults(prev => [...prev, newResult]);
+                }
+                handleNext();
+            };
+    
+            mediaRecorderRef.current.start();
+            timeoutRef.current = setTimeout(stopRecording, 6000);
+        } catch(err) {
+            alert("Microphone permission is required for this exercise.");
+            setStatus('ready_to_record');
+        }
     };
 
     return (
         <Card className="max-w-3xl mx-auto text-center">
             <CardHeader>
-                <CardTitle>Stage 2: Listen & Repeat ({currentIndex + 1}/{repetitionTasks.length})</CardTitle>
+                <CardTitle>Stage 2: Listen & Repeat ({currentIndex + 1}/{tasks.length})</CardTitle>
                 <CardDescription>Listen to the phrase, then record your repetition.</CardDescription>
             </CardHeader>
             <CardContent className="min-h-[150px] flex flex-col justify-center items-center">
@@ -231,10 +304,9 @@ function RepetitionStage({ onComplete }) {
     );
 }
 
-// --- Stage 3: Story Comprehension ---
-function ComprehensionStage({ onComplete }) {
+// --- Stage 3: Story Comprehension (Accepts 'stories' prop) ---
+function ComprehensionStage({ stories, onComplete }) {
     const [status, setStatus] = useState('idle');
-    // MODIFIED: State to track which story we are on
     const [currentStoryIndex, setCurrentStoryIndex] = useState(0); 
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [selectedOption, setSelectedOption] = useState(null);
@@ -243,14 +315,16 @@ function ComprehensionStage({ onComplete }) {
     const MARKS_CORRECT = 100;
     const MARKS_INCORRECT = 0;
 
-    // MODIFIED: Get the current story and question from the data array
-    const currentStory = storyData[currentStoryIndex];
+    const currentStory = stories[currentStoryIndex];
     const currentQuestion = currentStory.questions[currentQuestionIndex];
 
     const handlePlayStory = () => {
         setStatus('playing');
         const audio = new Audio(currentStory.storyAudioUrl);
-        audio.play();
+        audio.play().catch(err => {
+            console.error("Error playing audio:", err);
+            setStatus('idle');
+        });
         audio.onended = () => {
             setStatus('paused');
             setTimeout(() => setStatus('answering'), 1000);
@@ -273,22 +347,18 @@ function ComprehensionStage({ onComplete }) {
             setComprehensionResults(updatedResults);
             setSelectedOption(null);
 
-            // MODIFIED: Logic to move to the next question or next story
             const isLastQuestionInStory = currentQuestionIndex === currentStory.questions.length - 1;
-            const isLastStory = currentStoryIndex === storyData.length - 1;
+            const isLastStory = currentStoryIndex === stories.length - 1;
 
             if (isLastQuestionInStory) {
                 if (isLastStory) {
-                    // Finished all questions in all stories
                     onComplete(updatedResults);
                 } else {
-                    // Move to the next story
                     setCurrentStoryIndex(prev => prev + 1);
                     setCurrentQuestionIndex(0);
-                    setStatus('idle'); // Go back to the 'Play Story' screen for the new story
+                    setStatus('idle');
                 }
             } else {
-                // Move to the next question in the current story
                 setCurrentQuestionIndex(prev => prev + 1);
             }
         }, 1000);
@@ -297,8 +367,7 @@ function ComprehensionStage({ onComplete }) {
     return (
         <Card className="max-w-3xl mx-auto text-center">
             <CardHeader>
-                {/* MODIFIED: Updated title to show story progress */}
-                <CardTitle>Stage 3: Listening Comprehension (Story {currentStoryIndex + 1}/{storyData.length})</CardTitle>
+                <CardTitle>Stage 3: Listening Comprehension (Story {currentStoryIndex + 1}/{stories.length})</CardTitle>
                 <CardDescription>
                     {status === 'answering' ? `Question ${currentQuestionIndex + 1} of ${currentStory.questions.length}` : "Listen to the story, then answer the questions."}
                 </CardDescription>
