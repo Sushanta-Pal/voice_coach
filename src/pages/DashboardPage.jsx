@@ -1,21 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
 import { useSessions } from '../hooks/useSessions';
 import { useSummarizeProgress } from '../hooks/useVoiceCoach';
-
-// Import reusable UI components
 import Button from '../components/common/Button.jsx';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '../components/common/Card.jsx';
+import { Card, CardHeader, CardTitle, CardContent } from '../components/common/Card.jsx';
 import Modal from '../components/common/Model.jsx';
 import LoadingSpinner from '../components/common/LoadingSpinner.jsx';
 
 // Import Icons
 import { Sparkles, Code, Briefcase, Globe, BarChart, PlusCircle } from 'lucide-react';
 
-/**
- * A visually enhanced progress chart with gradient and animations.
- */
 const ProgressChart = ({ data }) => {
     // Guard against null or empty data early
     if (!data || data.length === 0) {
@@ -87,10 +82,6 @@ const ProgressChart = ({ data }) => {
     );
 };
 
-
-/**
- * A visually appealing component for when there is no session history.
- */
 const EmptyState = () => (
     <div className="text-center py-16 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl">
         <BarChart className="mx-auto h-12 w-12 text-slate-400" />
@@ -104,12 +95,10 @@ const EmptyState = () => (
     </div>
 );
 
-/**
- * The main dashboard page with an enhanced UI.
- */
+
 function DashboardPage() {
     const { user } = useUser();
-    const { sessionHistory, isLoading } = useSessions();
+    const { userData, sessionHistory, isLoading } = useSessions();
     const { mutate: summarizeProgress, data: summaryContent, isPending: isSummaryLoading } = useSummarizeProgress();
     const [isModalOpen, setIsModalOpen] = React.useState(false);
 
@@ -121,10 +110,9 @@ function DashboardPage() {
         );
     }
 
-    // FIXED: Ensure sessionHistory is an array before performing calculations.
     const safeSessionHistory = Array.isArray(sessionHistory) ? sessionHistory : [];
     const totalSessions = safeSessionHistory.length;
-    const avgScore = totalSessions > 0 ? (safeSessionHistory.reduce((acc, s) => acc + s.score, 0) / totalSessions).toFixed(0) : 0;
+    const avgScore = userData && userData.avg_score ? parseFloat(userData.avg_score).toFixed(0) : 0;
 
     const handleSummarizeProgress = () => {
         if (totalSessions === 0) return;
@@ -140,6 +128,24 @@ function DashboardPage() {
             default: return null;
         }
     };
+
+    // If there are no sessions yet, show the empty state for the main content area
+    if (totalSessions === 0) {
+         return (
+             <div className="container mx-auto py-8">
+                 {/* Header remains the same */}
+                 <div className="mb-12">
+                     <h1 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-white">
+                         Welcome back, {user?.firstName || 'User'}!
+                     </h1>
+                     <p className="mt-2 text-lg text-slate-600 dark:text-slate-400">
+                         Let's get started on your interview preparation journey.
+                     </p>
+                 </div>
+                 <EmptyState />
+             </div>
+         );
+    }
 
     return (
         <div className="container mx-auto py-8">
@@ -204,35 +210,35 @@ function DashboardPage() {
                     </Card>
                 </div>
                 <div>
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Session History</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            {totalSessions > 0 ? (
-                                <div className="space-y-3 max-h-[28rem] overflow-y-auto pr-2">
-                                    {safeSessionHistory.map((session) => (
-                                        <Link to={`/app/feedback/${session.id}`} key={session.id} className="block group">
-                                            <div className="flex items-center justify-between p-3 rounded-lg bg-slate-100 dark:bg-slate-800/50 group-hover:bg-slate-200 dark:group-hover:bg-slate-800 transition-colors">
-                                                <div className="flex items-center gap-3">
-                                                    {getSessionIcon(session.type)}
-                                                    <div>
-                                                        <p className="font-semibold">{session.type} Interview</p>
-                                                        <p className="text-sm text-slate-500 dark:text-slate-400">{session.date}</p>
-                                                    </div>
-                                                </div>
-                                                <div className="text-right">
-                                                    <p className="font-bold text-lg">{session.score}/100</p>
-                                                </div>
-                                            </div>
-                                        </Link>
-                                    ))}
-                                </div>
-                            ) : (
-                                <EmptyState />
-                            )}
-                        </CardContent>
-                    </Card>
+ 
+
+<Card>
+    <CardHeader>
+        <CardTitle>Session History</CardTitle>
+    </CardHeader>
+    <CardContent>
+        <div className="space-y-3 max-h-[28rem] overflow-y-auto pr-2">
+            {safeSessionHistory.map((session) => (
+                <Link to={`/app/feedback/${session.id}`} key={session.id} className="block group">
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-slate-100 dark:bg-slate-800/50 group-hover:bg-slate-200 dark:group-hover:bg-slate-800 transition-colors">
+                        <div className="flex items-center gap-3">
+                            {getSessionIcon(session.type)}
+                            <div>
+                                <p className="font-semibold">{session.type} Interview</p>
+                                {/* MODIFIED: Use the 'date' property from the session object */}
+                                <p className="text-sm text-slate-500 dark:text-slate-400">{session.date}</p>
+                            </div>
+                        </div>
+                        <div className="text-right">
+                            <p className="font-bold text-lg">{session.score}/100</p>
+                        </div>
+                    </div>
+                </Link>
+            ))}
+        </div>
+    </CardContent>
+</Card>
+
                 </div>
             </div>
         </div>

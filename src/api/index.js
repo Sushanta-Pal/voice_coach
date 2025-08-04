@@ -7,13 +7,12 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 /**
  * Calls the Gemini API with a given prompt, including robust retry logic.
- * This function now automatically handles rate-limiting (429 errors) by retrying.
+ * This function now automatically handles rate-limiting (429 errors) and service unavailable (503) errors by retrying.
  * @param {string} prompt The prompt to send to the Gemini API.
  * @param {number} retries The number of remaining retries.
  * @param {number} delay The delay in ms before the next retry.
  * @returns {Promise<object>} The parsed JSON response from the API.
  */
-// MODIFIED: Renamed the function as requested
 export const callGeminiAPI = async (prompt, retries = 3, delay = 1000) => {
     const payload = { contents: [{ parts: [{ text: prompt }] }] };
 
@@ -24,11 +23,10 @@ export const callGeminiAPI = async (prompt, retries = 3, delay = 1000) => {
             body: JSON.stringify(payload)
         });
 
-        // If rate limited and we still have retries left, wait and try again.
-        if (response.status === 429 && retries > 0) {
-            console.warn(`API rate limit hit. Retrying in ${delay}ms... (${retries} left)`);
+        // If rate limited or service is unavailable and we still have retries left, wait and try again.
+        if ((response.status === 429 || response.status === 503) && retries > 0) {
+            console.warn(`API returned ${response.status}. Retrying in ${delay}ms... (${retries} left)`);
             await sleep(delay);
-            // MODIFIED: Updated the recursive call to match the new function name
             return callGeminiAPI(prompt, retries - 1, delay * 2);
         }
 
@@ -49,7 +47,6 @@ export const callGeminiAPI = async (prompt, retries = 3, delay = 1000) => {
         }
     } catch (error) {
         console.error("Error during Gemini API call:", error);
-        // Re-throw the error so React Query can handle it
         throw error;
     }
 };

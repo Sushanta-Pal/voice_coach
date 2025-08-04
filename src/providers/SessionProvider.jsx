@@ -1,72 +1,85 @@
 import React, { createContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { useUser } from '@clerk/clerk-react';
-import { getSessions, addSession } from '../hooks/sessionService';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 export const SessionContext = createContext(null);
 
 export const SessionProvider = ({ children }) => {
-    // --- State Management ---
-    const [sessionHistory, setSessionHistory] = useState([]);
+    const [userData, setUserData] = useState(null);
     const [sessionType, setSessionType] = useState('Technical');
-    const [isLoading, setIsLoading] = useState(true); // To handle initial load
+    const [isLoading, setIsLoading] = useState(true);
+    const { user } = useUser();
 
-    // --- Clerk Integration ---
-    const { user } = useUser(); // Get the current user from Clerk
-
-    // This effect loads the user-specific session history when the user logs in or out.
     useEffect(() => {
         if (user) {
-            // If a user is logged in, fetch their specific session history from localStorage.
-            setIsLoading(true);
-            const userSessions = getSessions(user.id);
-            setSessionHistory(userSessions);
-            setIsLoading(false);
+            const userEmail = user.emailAddresses[0]?.emailAddress;
+
+            if (userEmail) {
+                setIsLoading(true);
+                console.log(`%cFetching data for: ${userEmail}`, 'color: blue; font-weight: bold;'); // DEBUG LOG
+                
+                fetch(`${API_BASE_URL}/api/user/${userEmail}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        console.log('%cData received from backend:', 'color: green; font-weight: bold;', data); // DEBUG LOG
+                        setUserData(data);
+                        setIsLoading(false);
+                    })
+                    .catch(err => {
+                        console.error('Failed to fetch user data:', err);
+                        setIsLoading(false);
+                    });
+            }
         } else {
-            // If no user is logged in, clear the history.
-            setSessionHistory([]);
+            setUserData(null);
             setIsLoading(false);
         }
-    }, [user]); // This runs whenever the user object changes.
+    }, [user]);
 
-    // --- Session Management Functions ---
-
-    /**
-     * Adds a new session to the history for the currently logged-in user.
-     * It saves to localStorage and updates the local state.
-     */
-    const addSessionToHistory = useCallback((newSession) => {
+    // ... (rest of the file is the same)
+    const addSessionToHistory = useCallback(async (newSession) => {
         if (!user) {
             console.error("Cannot add session: No user is signed in.");
             return;
         }
-        // Add a unique ID and save it to the user's history.
+
         const sessionWithId = { ...newSession, id: Date.now().toString() };
-        addSession(user.id, sessionWithId);
 
-        // Update the local state to reflect the change immediately in the UI.
-        setSessionHistory(prevHistory => [sessionWithId, ...prevHistory]);
+        await fetch(`${API_BASE_URL}/api/session`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: user.fullName,
+                email: user.emailAddresses[0].emailAddress,
+                session: sessionWithId,
+            }),
+        });
+        
+        setUserData(prevData => ({
+            ...prevData,
+            all_sessions_details: [sessionWithId, ...(prevData?.all_sessions_details || [])]
+        }));
+
         return sessionWithId;
-    }, [user]); // This function depends on the current user.
+    }, [user]);
 
-    /**
-     * Finds a session by its ID from the currently loaded history.
-     */
     const getSessionById = useCallback((id) => {
-        return sessionHistory.find(session => session.id === id);
-    }, [sessionHistory]); // This function depends on the session history.
+        return (userData?.all_sessions_details || []).find(session => session.id === id);
+    }, [userData]);
 
-    // --- Context Value ---
-
-    // useMemo prevents the context value from being recreated on every render,
-    // which can prevent unnecessary re-renders in consumer components.
-    const value = useMemo(() => ({
-        sessionHistory,
-        addSessionToHistory,
-        getSessionById,
-        sessionType,
-        setSessionType,
-        isLoading, // Provide loading state to consumers if needed
-    }), [sessionHistory, sessionType, isLoading, addSessionToHistory, getSessionById]);
+    const value = useMemo(() => {
+        console.log('%cSessionContext value updated:', 'color: purple; font-weight: bold;', { userData, sessionHistory: userData?.all_sessions_details || [] }); // DEBUG LOG
+        return {
+            userData,
+            sessionHistory: userData?.all_sessions_details || [],
+            addSessionToHistory,
+            getSessionById,
+            sessionType,
+            setSessionType,
+            isLoading,
+        };
+    }, [userData, sessionType, isLoading, addSessionToHistory, getSessionById]);
 
     return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 };

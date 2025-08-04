@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAnalyzeCommunication } from '../hooks/useVoiceCoach';
-// NEW: Import the useSessions hook to save the final report
 import { useSessions } from '../hooks/useSessions';
 
 // Import Components & Icons
@@ -10,39 +9,51 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../co
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { MicIcon, PlayIcon, CheckCircle, XCircle, ArrowRight, Volume2, Award, BookOpen, Repeat, BrainCircuit } from 'lucide-react';
 
-// --- Mock Data (No changes) ---
+// --- Expanded Mock Data ---
 const readingParagraphs = [
-    "The quick brown fox jumps over the lazy dog. This sentence contains all the letters of the alphabet.",
-    "To be or not to be, that is the question. Whether 'tis nobler in the mind to suffer the slings and arrows of outrageous fortune.",
-    "Innovation distinguishes between a leader and a follower. Stay hungry, stay foolish.",
+    "The sun dipped below the horizon, painting the sky in shades of orange and purple. A gentle breeze rustled the leaves in the trees, creating a soft, whispering sound that seemed to tell stories of the day's end.",
+    "Effective project management requires a delicate balance of clear communication, meticulous planning, and the flexibility to adapt to unforeseen challenges. A successful project manager must be a leader, a motivator, and a problem-solver all at once.",
+    "The ancient library was a labyrinth of towering shelves, each one filled with books bound in leather and smelling of dust and time. Every volume held a different world, a different secret, waiting patiently to be discovered.",
+    "Artificial intelligence is rapidly transforming industries across the globe, from healthcare and finance to transportation and entertainment. Its potential to solve complex problems is immense, but it also raises important ethical questions that we must address as a society.",
+    "To achieve a state of flow, one must be fully immersed in an activity, feeling energized, focused, and enjoying the process. It's a state of deep concentration where productivity and creativity often peak, leading to a profound sense of accomplishment."
 ];
+
 const repetitionTasks = [
     { text: "The report is due next Friday.", audioUrl: "/audio/report-due.mp3" },
     { text: "Can we reschedule the meeting?", audioUrl: "/audio/reschedule-meeting.mp3" },
     { text: "What are the key performance indicators?", audioUrl: "/audio/kpi.mp3" },
+    { text: "Let's touch base tomorrow morning to review the project status.", audioUrl: "/audio/touch-base.mp3" },
+    { text: "Could you please send over the updated presentation slides?", audioUrl: "/audio/updated-presentation.mp3" }
 ];
-const storyData = {
-    storyAudioUrl: "/audio/story_fantasy.mp3",
-    questions: [
-        { question: "What was Elara's job?", options: ["Blacksmith", "Librarian", "Baker", "Mayor"], correctAnswer: "Librarian" },
-        { question: "What was unique about the book she found?", options: ["It had a map", "It was written in gold", "It whispered secrets", "It was empty"], correctAnswer: "It whispered secrets" },
-    ]
-};
 
+const storyData = [
+    {
+        storyAudioUrl: "/audio/story_fantasy.mp3",
+        questions: [
+            { question: "What was Elara's profession?", options: ["Blacksmith", "Librarian", "Baker", "Mayor"], correctAnswer: "Librarian" },
+            { question: "What was unique about the book she discovered?", options: ["It had a golden cover", "It was written in an unknown language", "It whispered secrets to her", "It was completely empty"], correctAnswer: "It whispered secrets to her" },
+            { question: "What did the book reveal a map to?", options: ["A hidden city", "A secret garden", "A lost treasure", "An ancient forest"], correctAnswer: "A hidden city" }
+        ]
+    },
+    {
+        storyAudioUrl: "/audio/story_email.mp3", 
+        questions: [
+            { question: "What was the initial problem with Anjali's email?", options: ["It lacked specific details", "It was sent to the wrong person", "It was too long and confusing", "It had several spelling mistakes"], correctAnswer: "It lacked specific details" },
+            { question: "What information did Anjali include in her second email?", options: ["Her manager's contact number", "A screenshot of a different error", "The server's IP address and application name", "An apology for the inconvenience"], correctAnswer: "The server's IP address and application name" },
+            { question: "What does the acronym 'ASAP' stand for?", options: ["All Systems Are Perfect", "Another Software Application Problem", "Always Submit After Proofreading", "As Soon As Possible"], correctAnswer: "As Soon As Possible" }
+        ]
+    }
+];
 
-// --- Main Page Component (MODIFIED) ---
+// --- Main Page Component ---
 function CommunicationPracticePage() {
     const [stage, setStage] = useState('reading');
     const [results, setResults] = useState({ reading: [], repetition: [], comprehension: [] });
     const [finalAnalysis, setFinalAnalysis] = useState(null);
-    
-    // NEW: Get the function to add a session to history
     const { addSessionToHistory } = useSessions();
 
     const handleStageComplete = (stageName, data) => {
-        // NEW: Console log for debugging each stage's data
         console.log(`--- Data collected for stage: ${stageName.toUpperCase()} ---`, data);
-
         const newResults = { ...results, [stageName]: data };
         setResults(newResults);
 
@@ -51,25 +62,14 @@ function CommunicationPracticePage() {
         else if (stageName === 'comprehension') setStage('scoreSummary');
     };
     
-    // MODIFIED: This function now saves the report
     const handleSummaryComplete = (analysis) => {
-        // 1. Create a session object in the format the dashboard expects
         const sessionData = {
             type: 'Communication',
-            date: new Date().toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            }),
+            date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
             score: analysis.scores.overall,
-            feedback: analysis // Store the full analysis payload
+            feedback: analysis 
         };
-
-        // 2. Use the function from our context to save the session.
-        // This will automatically handle the user ID and save to localStorage.
         addSessionToHistory(sessionData);
-        
-        // 3. Set the analysis for the results page and move to the final stage
         setFinalAnalysis(analysis);
         setStage('results');
     };
@@ -89,7 +89,7 @@ function CommunicationPracticePage() {
     );
 }
 
-// --- Stage 1: Reading Aloud (No changes required) ---
+// --- Stage 1: Reading Aloud ---
 function ReadingStage({ onComplete }) {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [status, setStatus] = useState('idle');
@@ -134,14 +134,15 @@ function ReadingStage({ onComplete }) {
         };
 
         mediaRecorderRef.current.start();
-        timeoutRef.current = setTimeout(stopRecording, 5000);
+        // MODIFIED: Increased recording time to 7 seconds
+        timeoutRef.current = setTimeout(stopRecording, 7000);
     };
 
     return (
         <Card className="max-w-3xl mx-auto text-center">
             <CardHeader>
                 <CardTitle>Stage 1: Reading Aloud ({currentIndex + 1}/{readingParagraphs.length})</CardTitle>
-                <CardDescription>Read the paragraph below. Click stop or wait 5 seconds when you're done.</CardDescription>
+                <CardDescription>Read the paragraph below. The recording will stop automatically after 7 seconds.</CardDescription>
             </CardHeader>
             <CardContent>
                 <p className="text-lg mb-8 p-4 bg-slate-100 dark:bg-slate-800 rounded-md">{readingParagraphs[currentIndex]}</p>
@@ -154,7 +155,7 @@ function ReadingStage({ onComplete }) {
     );
 }
 
-// --- Stage 2: Listen & Repeat (No changes required) ---
+// --- Stage 2: Listen & Repeat ---
 function RepetitionStage({ onComplete }) {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [status, setStatus] = useState('idle');
@@ -206,7 +207,8 @@ function RepetitionStage({ onComplete }) {
         };
 
         mediaRecorderRef.current.start();
-        timeoutRef.current = setTimeout(stopRecording, 4000);
+        // MODIFIED: Increased recording time to 6 seconds
+        timeoutRef.current = setTimeout(stopRecording, 6000);
     };
 
     return (
@@ -229,19 +231,25 @@ function RepetitionStage({ onComplete }) {
     );
 }
 
-// --- Stage 3: Story Comprehension (No changes required) ---
+// --- Stage 3: Story Comprehension ---
 function ComprehensionStage({ onComplete }) {
     const [status, setStatus] = useState('idle');
+    // MODIFIED: State to track which story we are on
+    const [currentStoryIndex, setCurrentStoryIndex] = useState(0); 
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [selectedOption, setSelectedOption] = useState(null);
     const [comprehensionResults, setComprehensionResults] = useState([]);
+    
     const MARKS_CORRECT = 100;
     const MARKS_INCORRECT = 0;
-    const currentQuestion = storyData.questions[currentQuestionIndex];
+
+    // MODIFIED: Get the current story and question from the data array
+    const currentStory = storyData[currentStoryIndex];
+    const currentQuestion = currentStory.questions[currentQuestionIndex];
 
     const handlePlayStory = () => {
         setStatus('playing');
-        const audio = new Audio(storyData.storyAudioUrl);
+        const audio = new Audio(currentStory.storyAudioUrl);
         audio.play();
         audio.onended = () => {
             setStatus('paused');
@@ -259,14 +267,29 @@ function ComprehensionStage({ onComplete }) {
             isCorrect: isCorrect,
             score: isCorrect ? MARKS_CORRECT : MARKS_INCORRECT,
         };
+
         setTimeout(() => {
             const updatedResults = [...comprehensionResults, newResult];
             setComprehensionResults(updatedResults);
             setSelectedOption(null);
-            if (currentQuestionIndex < storyData.questions.length - 1) {
-                setCurrentQuestionIndex(prev => prev + 1);
+
+            // MODIFIED: Logic to move to the next question or next story
+            const isLastQuestionInStory = currentQuestionIndex === currentStory.questions.length - 1;
+            const isLastStory = currentStoryIndex === storyData.length - 1;
+
+            if (isLastQuestionInStory) {
+                if (isLastStory) {
+                    // Finished all questions in all stories
+                    onComplete(updatedResults);
+                } else {
+                    // Move to the next story
+                    setCurrentStoryIndex(prev => prev + 1);
+                    setCurrentQuestionIndex(0);
+                    setStatus('idle'); // Go back to the 'Play Story' screen for the new story
+                }
             } else {
-                onComplete(updatedResults);
+                // Move to the next question in the current story
+                setCurrentQuestionIndex(prev => prev + 1);
             }
         }, 1000);
     };
@@ -274,13 +297,14 @@ function ComprehensionStage({ onComplete }) {
     return (
         <Card className="max-w-3xl mx-auto text-center">
             <CardHeader>
-                <CardTitle>Stage 3: Listening Comprehension</CardTitle>
+                {/* MODIFIED: Updated title to show story progress */}
+                <CardTitle>Stage 3: Listening Comprehension (Story {currentStoryIndex + 1}/{storyData.length})</CardTitle>
                 <CardDescription>
-                    {status === 'answering' ? `Question ${currentQuestionIndex + 1} of ${storyData.questions.length}` : "Listen to the story once, then answer the questions."}
+                    {status === 'answering' ? `Question ${currentQuestionIndex + 1} of ${currentStory.questions.length}` : "Listen to the story, then answer the questions."}
                 </CardDescription>
             </CardHeader>
             <CardContent className="min-h-[250px] flex flex-col justify-center items-center">
-                {status === 'idle' && <Button size="lg" onClick={handlePlayStory}><PlayIcon className="mr-2" /> Play Story</Button>}
+                {status === 'idle' && <Button size="lg" onClick={handlePlayStory}><PlayIcon className="mr-2" /> Play Story {currentStoryIndex + 1}</Button>}
                 {status === 'playing' && <p className="text-blue-500 font-semibold animate-pulse">🔊 Story is playing...</p>}
                 {status === 'paused' && <LoadingSpinner />}
                 {status === 'answering' && (
@@ -315,8 +339,7 @@ function ComprehensionStage({ onComplete }) {
     );
 }
 
-
-// --- Score Summary Stage (No changes required) ---
+// --- Score Summary Stage ---
 function ScoreSummaryStage({ allResults, onComplete }) {
     const { mutate: analyzeSession, isPending, data: analysisPayload } = useAnalyzeCommunication();
 
@@ -364,11 +387,7 @@ function ScoreSummaryStage({ allResults, onComplete }) {
     );
 }
 
-
-
-
-// --- Other components (ScoreCard, ResultsStage, ProgressStepper) are unchanged ---
-
+// --- Other components ---
 const ScoreCard = ({ icon, title, score }) => (
     <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-lg">
         <div className="flex items-center justify-center gap-2 text-slate-500 dark:text-slate-400">
@@ -381,7 +400,6 @@ const ScoreCard = ({ icon, title, score }) => (
 
 function ResultsStage({ finalAnalysis }) {
     const navigate = useNavigate();
-
     return (
         <Card className="max-w-4xl mx-auto">
             <CardHeader><CardTitle className="text-center">Your Detailed Communication Report</CardTitle></CardHeader>
