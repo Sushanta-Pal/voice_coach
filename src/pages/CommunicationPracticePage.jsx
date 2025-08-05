@@ -333,7 +333,7 @@ function ReadingStage({ paragraphs, onComplete }) {
       };
 
       mediaRecorderRef.current.start();
-      timeoutRef.current = setTimeout(stopRecording, 7000);
+      timeoutRef.current = setTimeout(stopRecording, 20000);
     } catch (err) {
       alert("Microphone permission is required for this exercise.");
       setStatus("idle");
@@ -440,7 +440,7 @@ function RepetitionStage({ tasks, onComplete }) {
       };
 
       mediaRecorderRef.current.start();
-      timeoutRef.current = setTimeout(stopRecording, 6000);
+      timeoutRef.current = setTimeout(stopRecording, 10000);
     } catch (err) {
       alert("Microphone permission is required for this exercise.");
       setStatus("ready_to_record");
