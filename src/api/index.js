@@ -59,6 +59,7 @@ export const callGeminiAPI = async (prompt, retries = 3, delay = 1000) => {
 export const transcribeAudio = async (audioBlob) => {
     if (!audioBlob) throw new Error("Audio blob is missing.");
     const formData = new FormData();
+     console.log("Transcribing audio blob:", audioBlob);
     formData.append('file', audioBlob, 'recording.webm');
 
     const response = await fetch(TRANSCRIPTION_API_URL, {
