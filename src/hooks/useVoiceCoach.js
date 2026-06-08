@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { callGeminiAPI, transcribeAudio } from '../api/index';
+import { callGroqAPI, transcribeAudio } from '../api/index';
 
 // Hook for analyzing interview answers (both text and audio)
 export const useAnalyzeAnswer = () => {
@@ -12,13 +12,13 @@ export const useAnalyzeAnswer = () => {
                 // Transcribe the audio.
                 const transcriptionResult = await transcribeAudio(audioBlob);
                 
-                // FIX: Extract the 'text' property from the transcription result object.
+                // Extract the 'text' property from the transcription result object.
                 // This ensures 'finalAnswer' is a string, preventing the .replace() error.
                 // A fallback to an empty string is added for safety.
                 finalAnswer = transcriptionResult.text || '';
             }
 
-            // Construct the prompt for the Gemini API.
+            // Construct the prompt for the Groq API.
             const prompt = `
                 You are an expert interview coach for a platform called VoiceCoach.
                 A user is practicing for a ${sessionType} interview.
@@ -39,8 +39,8 @@ export const useAnalyzeAnswer = () => {
                   "improvements": [<an array of strings>]
                 }
             `;
-            // Call the Gemini API with the constructed prompt.
-            return callGeminiAPI(prompt);
+            // Call the Groq API with the constructed prompt.
+            return callGroqAPI(prompt);
         },
     });
 };
@@ -52,10 +52,10 @@ export const useCompareTranscript = () => {
             // Transcribe the audio.
             const transcriptionResult = await transcribeAudio(audioBlob);
 
-            // FIX: Extract the 'text' property from the transcription result object.
+            // Extract the 'text' property from the transcription result object.
             const transcribedText = transcriptionResult.text || '';
 
-            // Construct the prompt for the Gemini API.
+            // Construct the prompt for the Groq API.
             const prompt = `
                 Analyze the following speech comparison for accuracy.
                 Original Text: "${originalText}"
@@ -68,8 +68,8 @@ export const useCompareTranscript = () => {
                   "feedback": "A short feedback message."
                 }
             `;
-            // Call the Gemini API and merge the result with the original text.
-            const analysisResult = await callGeminiAPI(prompt);
+            // Call the Groq API and merge the result with the original text.
+            const analysisResult = await callGroqAPI(prompt);
             return { ...analysisResult, originalText };
         },
     });
@@ -90,7 +90,7 @@ export const useSummarizeProgress = () => {
                 Session History:
                 ${historyString}
             `;
-            const result = await callGeminiAPI(prompt);
+            const result = await callGroqAPI(prompt);
             return result.summary || JSON.stringify(result);
         }
     });
@@ -110,7 +110,7 @@ export const useCreateStudyPlan = () => {
                 Feedback Report:
                 ${feedbackString}
             `;
-            const result = await callGeminiAPI(prompt);
+            const result = await callGroqAPI(prompt);
             return result.plan || JSON.stringify(result);
         }
     });
@@ -118,33 +118,42 @@ export const useCreateStudyPlan = () => {
 
 /**
  * Hook for analyzing the entire communication practice session at once.
- * It first transcribes all audio, then sends all data to Gemini in a single call.
+ * It first transcribes all audio, then sends all data to Groq in a single call.
  */
 export const useAnalyzeCommunication = () => {
     return useMutation({
         mutationFn: async (allResults) => {
-            // 1. Concurrently transcribe all audio blobs from reading and repetition stages.
-            const readingTranscriptionPromises = allResults.reading.map(result => transcribeAudio(result.audioBlob));
-            const repetitionTranscriptionPromises = allResults.repetition.map(result => transcribeAudio(result.audioBlob));
+            // Process transcriptions ONE BY ONE instead of all at once
+            // This prevents the free Hugging Face server from crashing due to overload.
+            const allTranscriptionResults = [];
+            const allItems = [...allResults.reading, ...allResults.repetition];
             
-            const allPromises = [...readingTranscriptionPromises, ...repetitionTranscriptionPromises];
-            const allTranscriptionResults = await Promise.all(allPromises);
+            for (let i = 0; i < allItems.length; i++) {
+                try {
+                    // Added a tiny delay between requests to be safe
+                    await new Promise(res => setTimeout(res, 1500)); 
+                    const result = await transcribeAudio(allItems[i].audioBlob);
+                    allTranscriptionResults.push(result);
+                } catch (error) {
+                    console.error("Transcription failed for audio blob", error);
+                    // Fallback to empty string if one fails so the whole process doesn't crash
+                    allTranscriptionResults.push({ text: '' }); 
+                }
+            }
 
             // 2. Map transcripts back to their original texts.
             const transcribedReadingResults = allResults.reading.map((result, index) => ({
                 originalText: result.originalText,
-                // FIX: Extract the 'text' property from each result.
                 transcribedText: allTranscriptionResults[index]?.text || '',
             }));
 
             const repetitionStartIndex = allResults.reading.length;
             const transcribedRepetitionResults = allResults.repetition.map((result, index) => ({
                 originalText: result.originalText,
-                // FIX: Extract the 'text' property from each result.
                 transcribedText: allTranscriptionResults[repetitionStartIndex + index]?.text || '',
             }));
             
-            // 3. Construct the single, large prompt for Gemini.
+            // 3. Construct the single, large prompt for Groq API.
             const prompt = `
                 You are an expert communication coach. Analyze the user's entire performance based on the data below.
                 Your response MUST be a valid JSON object.
@@ -171,8 +180,8 @@ export const useAnalyzeCommunication = () => {
                 }
             `;
             
-            // 4. Make the single API call.
-            return callGeminiAPI(prompt);
+            // 4. Make the single API call to Groq.
+            return callGroqAPI(prompt);
         }
     });
 };

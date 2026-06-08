@@ -12,7 +12,7 @@ app.use(express.json());
 
 const { Pool } = pg;
 
-// FIX: Added the ssl configuration object required by Neon
+// Keep your pool exactly like this
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
@@ -20,6 +20,12 @@ const pool = new Pool({
   }
 });
 
+// ✅ ADD THIS NEW BLOCK: Catch errors on idle clients so they don't crash Node.js
+pool.on('error', (err, client) => {
+  console.error('❌ Unexpected error on idle database client', err);
+});
+
+// Keep this the same
 pool.connect()
   .then(() => console.log('✅ Connected to db'))
   .catch(err => console.error('❌ Database connection error', err.stack));
